@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["VERSION","Version number of this crate."]],"fn":[["link_spectest","Return an instance implementing the \"spectest\" interface used in the spec testsuite."]],"struct":[["WastContext","The wast test script language allows modules to be defined and actions to be performed on them."]]});

@@ -1,0 +1,1275 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `cranelift/codegen/meta/src/isa/x86/opcodes.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>opcodes.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script src="../../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="shortcut icon" href="../../../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../../cranelift_codegen_meta/index.html'><div class='logo-container'><img src='../../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../../../settings.html"><img src="../../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<span id="2">  2</span>
+<span id="3">  3</span>
+<span id="4">  4</span>
+<span id="5">  5</span>
+<span id="6">  6</span>
+<span id="7">  7</span>
+<span id="8">  8</span>
+<span id="9">  9</span>
+<span id="10"> 10</span>
+<span id="11"> 11</span>
+<span id="12"> 12</span>
+<span id="13"> 13</span>
+<span id="14"> 14</span>
+<span id="15"> 15</span>
+<span id="16"> 16</span>
+<span id="17"> 17</span>
+<span id="18"> 18</span>
+<span id="19"> 19</span>
+<span id="20"> 20</span>
+<span id="21"> 21</span>
+<span id="22"> 22</span>
+<span id="23"> 23</span>
+<span id="24"> 24</span>
+<span id="25"> 25</span>
+<span id="26"> 26</span>
+<span id="27"> 27</span>
+<span id="28"> 28</span>
+<span id="29"> 29</span>
+<span id="30"> 30</span>
+<span id="31"> 31</span>
+<span id="32"> 32</span>
+<span id="33"> 33</span>
+<span id="34"> 34</span>
+<span id="35"> 35</span>
+<span id="36"> 36</span>
+<span id="37"> 37</span>
+<span id="38"> 38</span>
+<span id="39"> 39</span>
+<span id="40"> 40</span>
+<span id="41"> 41</span>
+<span id="42"> 42</span>
+<span id="43"> 43</span>
+<span id="44"> 44</span>
+<span id="45"> 45</span>
+<span id="46"> 46</span>
+<span id="47"> 47</span>
+<span id="48"> 48</span>
+<span id="49"> 49</span>
+<span id="50"> 50</span>
+<span id="51"> 51</span>
+<span id="52"> 52</span>
+<span id="53"> 53</span>
+<span id="54"> 54</span>
+<span id="55"> 55</span>
+<span id="56"> 56</span>
+<span id="57"> 57</span>
+<span id="58"> 58</span>
+<span id="59"> 59</span>
+<span id="60"> 60</span>
+<span id="61"> 61</span>
+<span id="62"> 62</span>
+<span id="63"> 63</span>
+<span id="64"> 64</span>
+<span id="65"> 65</span>
+<span id="66"> 66</span>
+<span id="67"> 67</span>
+<span id="68"> 68</span>
+<span id="69"> 69</span>
+<span id="70"> 70</span>
+<span id="71"> 71</span>
+<span id="72"> 72</span>
+<span id="73"> 73</span>
+<span id="74"> 74</span>
+<span id="75"> 75</span>
+<span id="76"> 76</span>
+<span id="77"> 77</span>
+<span id="78"> 78</span>
+<span id="79"> 79</span>
+<span id="80"> 80</span>
+<span id="81"> 81</span>
+<span id="82"> 82</span>
+<span id="83"> 83</span>
+<span id="84"> 84</span>
+<span id="85"> 85</span>
+<span id="86"> 86</span>
+<span id="87"> 87</span>
+<span id="88"> 88</span>
+<span id="89"> 89</span>
+<span id="90"> 90</span>
+<span id="91"> 91</span>
+<span id="92"> 92</span>
+<span id="93"> 93</span>
+<span id="94"> 94</span>
+<span id="95"> 95</span>
+<span id="96"> 96</span>
+<span id="97"> 97</span>
+<span id="98"> 98</span>
+<span id="99"> 99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+</pre><div class="example-wrap"><pre class="rust ">
+<span class="doccomment">//! Static, named definitions of instruction opcodes.</span>
+
+<span class="doccomment">/// Empty opcode for use as a default.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">EMPTY</span>: [<span class="ident">u8</span>; <span class="number">0</span>] <span class="op">=</span> [];
+
+<span class="doccomment">/// Add with carry flag r{16,32,64} to r/m of the same size.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADC</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x11</span>];
+
+<span class="doccomment">/// Add r{16,32,64} to r/m of the same size.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x01</span>];
+
+<span class="doccomment">/// Add imm{16,32} to r/m{16,32,64}, possibly sign-extended.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_IMM</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x81</span>];
+
+<span class="doccomment">/// Add sign-extended imm8 to r/m{16,32,64}.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_IMM8_SIGN_EXTEND</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x83</span>];
+
+<span class="doccomment">/// Add packed double-precision floating-point values from xmm2/mem to xmm1 and store result in  </span>
+<span class="doccomment">/// xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADDPD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x58</span>];
+
+<span class="doccomment">/// Add packed single-precision floating-point values from xmm2/mem to xmm1 and store result in  </span>
+<span class="doccomment">/// xmm1 (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADDPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x58</span>];
+
+<span class="doccomment">/// Add the low double-precision floating-point value from xmm2/mem to xmm1</span>
+<span class="doccomment">/// and store the result in xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADDSD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x58</span>];
+
+<span class="doccomment">/// Add the low single-precision floating-point value from xmm2/mem to xmm1</span>
+<span class="doccomment">/// and store the result in xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADDSS</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x58</span>];
+
+<span class="doccomment">/// r/m{16,32,64} AND register of the same size (Intel docs have a typo).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">AND</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x21</span>];
+
+<span class="doccomment">/// imm{16,32} AND r/m{16,32,64}, possibly sign-extended.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">AND_IMM</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x81</span>];
+
+<span class="doccomment">/// r/m{16,32,64} AND sign-extended imm8.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">AND_IMM8_SIGN_EXTEND</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x83</span>];
+
+<span class="doccomment">/// Return the bitwise logical AND NOT of packed single-precision floating-point</span>
+<span class="doccomment">/// values in xmm1 and xmm2/mem.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ANDNPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x55</span>];
+
+<span class="doccomment">/// Return the bitwise logical AND of packed single-precision floating-point values</span>
+<span class="doccomment">/// in xmm1 and xmm2/mem.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ANDPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x54</span>];
+
+<span class="doccomment">/// Bit scan forward (stores index of first encountered 1 from the front).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">BIT_SCAN_FORWARD</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0xbc</span>];
+
+<span class="doccomment">/// Bit scan reverse (stores index of first encountered 1 from the back).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">BIT_SCAN_REVERSE</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0xbd</span>];
+
+<span class="doccomment">/// Call near, relative, displacement relative to next instruction (sign-extended).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CALL_RELATIVE</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xe8</span>];
+
+<span class="doccomment">/// Move r/m{16,32,64} if overflow (OF=1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CMOV_OVERFLOW</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x40</span>];
+
+<span class="doccomment">/// Compare imm{16,32} with r/m{16,32,64} (sign-extended if 64).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CMP_IMM</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x81</span>];
+
+<span class="doccomment">/// Compare imm8 with r/m{16,32,64}.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CMP_IMM8</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x83</span>];
+
+<span class="doccomment">/// Compare r{16,32,64} with r/m of the same size.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CMP_REG</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x39</span>];
+
+<span class="doccomment">/// Compare packed double-precision floating-point value in xmm2/m32 and xmm1 using bits 2:0 of</span>
+<span class="doccomment">/// imm8 as comparison predicate (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CMPPD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xc2</span>];
+
+<span class="doccomment">/// Compare packed single-precision floating-point value in xmm2/m32 and xmm1 using bits 2:0 of</span>
+<span class="doccomment">/// imm8 as comparison predicate (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CMPPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0xc2</span>];
+
+<span class="doccomment">/// Convert four packed signed doubleword integers from xmm2/mem to four packed single-precision</span>
+<span class="doccomment">/// floating-point values in xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CVTDQ2PS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x5b</span>];
+
+<span class="doccomment">/// Convert scalar double-precision floating-point value to scalar single-precision</span>
+<span class="doccomment">/// floating-point value.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CVTSD2SS</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x5a</span>];
+
+<span class="doccomment">/// Convert doubleword integer to scalar double-precision floating-point value.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CVTSI2SD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x2a</span>];
+
+<span class="doccomment">/// Convert doubleword integer to scalar single-precision floating-point value.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CVTSI2SS</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x2a</span>];
+
+<span class="doccomment">/// Convert scalar single-precision floating-point value to scalar double-precision</span>
+<span class="doccomment">/// float-point value.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CVTSS2SD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x5a</span>];
+
+<span class="doccomment">/// Convert with truncation scalar double-precision floating-point value to signed</span>
+<span class="doccomment">/// integer.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CVTTSD2SI</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x2c</span>];
+
+<span class="doccomment">/// Convert with truncation scalar single-precision floating-point value to integer.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">CVTTSS2SI</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x2c</span>];
+
+<span class="doccomment">/// Unsigned divide for {16,32,64}-bit.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">DIV</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xf7</span>];
+
+<span class="doccomment">/// Divide packed double-precision floating-point values in xmm1 by packed double-precision</span>
+<span class="doccomment">/// floating-point values in xmm2/mem (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">DIVPD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x5e</span>];
+
+<span class="doccomment">/// Divide packed single-precision floating-point values in xmm1 by packed single-precision</span>
+<span class="doccomment">/// floating-point values in xmm2/mem (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">DIVPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x5e</span>];
+
+<span class="doccomment">/// Divide low double-precision floating-point value in xmm1 by low double-precision</span>
+<span class="doccomment">/// floating-point value in xmm2/m64.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">DIVSD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x5e</span>];
+
+<span class="doccomment">/// Divide low single-precision floating-point value in xmm1 by low single-precision</span>
+<span class="doccomment">/// floating-point value in xmm2/m32.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">DIVSS</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x5e</span>];
+
+<span class="doccomment">/// Signed divide for {16,32,64}-bit.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">IDIV</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xf7</span>];
+
+<span class="doccomment">/// Signed multiply for {16,32,64}-bit, generic registers.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">IMUL</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0xaf</span>];
+
+<span class="doccomment">/// Signed multiply for {16,32,64}-bit, storing into RDX:RAX.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">IMUL_RDX_RAX</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xf7</span>];
+
+<span class="doccomment">/// Insert scalar single-precision floating-point value.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">INSERTPS</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x3a</span>, <span class="number">0x21</span>];
+
+<span class="doccomment">/// Either:</span>
+<span class="doccomment">///  1. Jump near, absolute indirect, RIP = 64-bit offset from register or memory.</span>
+<span class="doccomment">///  2. Jump far, absolute indirect, address given in m16:64.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">JUMP_ABSOLUTE</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xff</span>];
+
+<span class="doccomment">/// Jump near, relative, RIP = RIP + 32-bit displacement sign extended to 64 bits.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">JUMP_NEAR_RELATIVE</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xe9</span>];
+
+<span class="doccomment">/// Jump near (rel32) if overflow (OF=1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">JUMP_NEAR_IF_OVERFLOW</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x80</span>];
+
+<span class="doccomment">/// Jump short, relative, RIP = RIP + 8-bit displacement sign extended to 64 bits.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">JUMP_SHORT</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xeb</span>];
+
+<span class="doccomment">/// Jump short (rel8) if equal (ZF=1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">JUMP_SHORT_IF_EQUAL</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x74</span>];
+
+<span class="doccomment">/// Jump short (rel8) if not equal (ZF=0).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">JUMP_SHORT_IF_NOT_EQUAL</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x75</span>];
+
+<span class="doccomment">/// Jump short (rel8) if overflow (OF=1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">JUMP_SHORT_IF_OVERFLOW</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x70</span>];
+
+<span class="doccomment">/// Store effective address for m in register r{16,32,64}.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">LEA</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x8d</span>];
+
+<span class="doccomment">/// Count the number of leading zero bits.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">LZCNT</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0xbd</span>];
+
+<span class="doccomment">/// Return the maximum packed double-precision floating-point values between xmm1 and xmm2/m128</span>
+<span class="doccomment">/// (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MAXPD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x5f</span>];
+
+<span class="doccomment">/// Return the maximum packed single-precision floating-point values between  xmm1 and xmm2/m128</span>
+<span class="doccomment">/// (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MAXPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x5f</span>];
+
+<span class="doccomment">/// Return the maximum scalar double-precision floating-point value between</span>
+<span class="doccomment">/// xmm2/m64 and xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MAXSD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x5f</span>];
+
+<span class="doccomment">/// Return the maximum scalar single-precision floating-point value between</span>
+<span class="doccomment">/// xmm2/m32 and xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MAXSS</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x5f</span>];
+
+<span class="doccomment">/// Return the minimum packed double-precision floating-point values between xmm1 and xmm2/m128</span>
+<span class="doccomment">/// (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MINPD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x5d</span>];
+
+<span class="doccomment">/// Return the minimum packed single-precision floating-point values between xmm1 and xmm2/m128</span>
+<span class="doccomment">/// (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MINPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x5d</span>];
+
+<span class="doccomment">/// Return the minimum scalar double-precision floating-point value between</span>
+<span class="doccomment">/// xmm2/m64 and xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MINSD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x5d</span>];
+
+<span class="doccomment">/// Return the minimum scalar single-precision floating-point value between</span>
+<span class="doccomment">/// xmm2/m32 and xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MINSS</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x5d</span>];
+
+<span class="doccomment">/// Move r8 to r/m8.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOV_BYTE_STORE</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x88</span>];
+
+<span class="doccomment">/// Move imm{16,32,64} to same-sized register.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOV_IMM</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xb8</span>];
+
+<span class="doccomment">/// Move imm{16,32} to r{16,32,64}, sign-extended if 64-bit target.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOV_IMM_SIGNEXTEND</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xc7</span>];
+
+<span class="doccomment">/// Move {r/m16, r/m32, r/m64} to same-sized register.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOV_LOAD</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x8b</span>];
+
+<span class="doccomment">/// Move r16 to r/m16.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOV_STORE_16</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x89</span>];
+
+<span class="doccomment">/// Move {r16, r32, r64} to same-sized register or memory.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOV_STORE</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x89</span>];
+
+<span class="doccomment">/// Move aligned packed single-precision floating-point values from x/m to xmm (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVAPS_LOAD</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x28</span>];
+
+<span class="doccomment">/// Move doubleword from r/m32 to xmm (SSE2). Quadword with REX prefix.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVD_LOAD_XMM</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x6e</span>];
+
+<span class="doccomment">/// Move doubleword from xmm to r/m32 (SSE2). Quadword with REX prefix.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVD_STORE_XMM</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x7e</span>];
+
+<span class="doccomment">/// Move packed single-precision floating-point values low to high (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVLHPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x16</span>];
+
+<span class="doccomment">/// Move scalar double-precision floating-point value (from reg/mem to reg).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVSD_LOAD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x10</span>];
+
+<span class="doccomment">/// Move scalar double-precision floating-point value (from reg to reg/mem).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVSD_STORE</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x11</span>];
+
+<span class="doccomment">/// Move scalar single-precision floating-point value (from reg to reg/mem).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVSS_STORE</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x11</span>];
+
+<span class="doccomment">/// Move scalar single-precision floating-point-value (from reg/mem to reg).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVSS_LOAD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x10</span>];
+
+<span class="doccomment">/// Move byte to register with sign-extension.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVSX_BYTE</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0xbe</span>];
+
+<span class="doccomment">/// Move word to register with sign-extension.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVSX_WORD</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0xbf</span>];
+
+<span class="doccomment">/// Move doubleword to register with sign-extension.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVSXD</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x63</span>];
+
+<span class="doccomment">/// Move unaligned packed single-precision floating-point from x/m to xmm (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVUPS_LOAD</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x10</span>];
+
+<span class="doccomment">/// Move unaligned packed single-precision floating-point value from xmm to x/m (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVUPS_STORE</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x11</span>];
+
+<span class="doccomment">/// Move byte to register with zero-extension.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVZX_BYTE</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0xb6</span>];
+
+<span class="doccomment">/// Move word to register with zero-extension.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MOVZX_WORD</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0xb7</span>];
+
+<span class="doccomment">/// Unsigned multiply for {16,32,64}-bit.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MUL</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xf7</span>];
+
+<span class="doccomment">/// Multiply packed double-precision floating-point values from xmm2/mem to xmm1 and store result</span>
+<span class="doccomment">/// in xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MULPD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x59</span>];
+
+<span class="doccomment">/// Multiply packed single-precision floating-point values from xmm2/mem to xmm1 and store result</span>
+<span class="doccomment">/// in xmm1 (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MULPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x59</span>];
+
+<span class="doccomment">/// Multiply the low double-precision floating-point value in xmm2/m64 by the</span>
+<span class="doccomment">/// low double-precision floating-point value in xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MULSD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x59</span>];
+
+<span class="doccomment">/// Multiply the low single-precision floating-point value in xmm2/m32 by the</span>
+<span class="doccomment">/// low single-precision floating-point value in xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">MULSS</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x59</span>];
+
+<span class="doccomment">/// Reverse each bit of r/m{16,32,64}.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">NOT</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xf7</span>];
+
+<span class="doccomment">/// r{16,32,64} OR register of same size.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">OR</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x09</span>];
+
+<span class="doccomment">/// imm{16,32} OR r/m{16,32,64}, possibly sign-extended.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">OR_IMM</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x81</span>];
+
+<span class="doccomment">/// r/m{16,32,64} OR sign-extended imm8.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">OR_IMM8_SIGN_EXTEND</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x83</span>];
+
+<span class="doccomment">/// Return the bitwise logical OR of packed single-precision values in xmm and x/m (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ORPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x56</span>];
+
+<span class="doccomment">/// Add packed byte integers from xmm2/m128 and xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PADDB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xfc</span>];
+
+<span class="doccomment">/// Add packed doubleword integers from xmm2/m128 and xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PADDD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xfe</span>];
+
+<span class="doccomment">/// Add packed quadword integers from xmm2/m128 and xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PADDQ</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xd4</span>];
+
+<span class="doccomment">/// Add packed word integers from xmm2/m128 and xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PADDW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xfd</span>];
+
+<span class="doccomment">/// Add packed signed byte integers from xmm2/m128 and xmm1 saturate the results (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PADDSB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xec</span>];
+
+<span class="doccomment">/// Add packed signed word integers from xmm2/m128 and xmm1 saturate the results (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PADDSW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xed</span>];
+
+<span class="doccomment">/// Add packed unsigned byte integers from xmm2/m128 and xmm1 saturate the results (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PADDUSB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xdc</span>];
+
+<span class="doccomment">/// Add packed unsigned word integers from xmm2/m128 and xmm1 saturate the results (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PADDUSW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xdd</span>];
+
+<span class="doccomment">/// Bitwise AND of xmm2/m128 and xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PAND</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xdb</span>];
+
+<span class="doccomment">/// Bitwise AND NOT of xmm2/m128 and xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PANDN</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xdf</span>];
+
+<span class="doccomment">/// Average packed unsigned byte integers from xmm2/m128 and xmm1 with rounding (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PAVGB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xE0</span>];
+
+<span class="doccomment">/// Average packed unsigned word integers from xmm2/m128 and xmm1 with rounding (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PAVGW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xE3</span>];
+
+<span class="doccomment">/// Compare packed data for equal (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PCMPEQB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x74</span>];
+
+<span class="doccomment">/// Compare packed data for equal (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PCMPEQD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x76</span>];
+
+<span class="doccomment">/// Compare packed data for equal (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PCMPEQQ</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x29</span>];
+
+<span class="doccomment">/// Compare packed data for equal (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PCMPEQW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x75</span>];
+
+<span class="doccomment">/// Compare packed signed byte integers for greater than (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PCMPGTB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x64</span>];
+
+<span class="doccomment">/// Compare packed signed doubleword integers for greater than (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PCMPGTD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x66</span>];
+
+<span class="doccomment">/// Compare packed signed quadword integers for greater than (SSE4.2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PCMPGTQ</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x37</span>];
+
+<span class="doccomment">/// Compare packed signed word integers for greater than (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PCMPGTW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x65</span>];
+
+<span class="doccomment">/// Extract doubleword or quadword, depending on REX.W (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PEXTR</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x3a</span>, <span class="number">0x16</span>];
+
+<span class="doccomment">/// Extract byte (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PEXTRB</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x3a</span>, <span class="number">0x14</span>];
+
+<span class="doccomment">/// Extract word (SSE4.1). There is a 3-byte SSE2 variant that can also move to m/16.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PEXTRW</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x3a</span>, <span class="number">0x15</span>];
+
+<span class="doccomment">/// Insert doubleword or quadword, depending on REX.W (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PINSR</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x3a</span>, <span class="number">0x22</span>];
+
+<span class="doccomment">/// Insert byte (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PINSRB</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x3a</span>, <span class="number">0x20</span>];
+
+<span class="doccomment">/// Insert word (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PINSRW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xc4</span>];
+
+<span class="doccomment">/// Compare packed signed byte integers in xmm1 and xmm2/m128 and store packed maximum values in</span>
+<span class="doccomment">/// xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMAXSB</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x3c</span>];
+
+<span class="doccomment">/// Compare packed signed doubleword integers in xmm1 and xmm2/m128 and store packed maximum</span>
+<span class="doccomment">/// values in xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMAXSD</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x3d</span>];
+
+<span class="doccomment">/// Compare packed signed word integers in xmm1 and xmm2/m128 and store packed maximum values in</span>
+<span class="doccomment">/// xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMAXSW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xee</span>];
+
+<span class="doccomment">/// Compare packed unsigned byte integers in xmm1 and xmm2/m128 and store packed maximum values in</span>
+<span class="doccomment">/// xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMAXUB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xde</span>];
+
+<span class="doccomment">/// Compare packed unsigned doubleword integers in xmm1 and xmm2/m128 and store packed maximum</span>
+<span class="doccomment">/// values in xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMAXUD</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x3f</span>];
+
+<span class="doccomment">/// Compare packed unsigned word integers in xmm1 and xmm2/m128 and store packed maximum values in</span>
+<span class="doccomment">/// xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMAXUW</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x3e</span>];
+
+<span class="doccomment">/// Compare packed signed byte integers in xmm1 and xmm2/m128 and store packed minimum values in</span>
+<span class="doccomment">/// xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMINSB</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x38</span>];
+
+<span class="doccomment">/// Compare packed signed doubleword integers in xmm1 and xmm2/m128 and store packed minimum</span>
+<span class="doccomment">/// values in xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMINSD</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x39</span>];
+
+<span class="doccomment">/// Compare packed signed word integers in xmm1 and xmm2/m128 and store packed minimum values in</span>
+<span class="doccomment">/// xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMINSW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xea</span>];
+
+<span class="doccomment">/// Compare packed unsigned byte integers in xmm1 and xmm2/m128 and store packed minimum values in</span>
+<span class="doccomment">/// xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMINUB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xda</span>];
+
+<span class="doccomment">/// Compare packed unsigned doubleword integers in xmm1 and xmm2/m128 and store packed minimum</span>
+<span class="doccomment">/// values in xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMINUD</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x3b</span>];
+
+<span class="doccomment">/// Compare packed unsigned word integers in xmm1 and xmm2/m128 and store packed minimum values in</span>
+<span class="doccomment">/// xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMINUW</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x3a</span>];
+
+<span class="doccomment">/// Sign extend 8 packed 8-bit integers in the low 8 bytes of xmm2/m64 to 8 packed 16-bit</span>
+<span class="doccomment">/// integers in xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMOVSXBW</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x20</span>];
+
+<span class="doccomment">/// Sign extend 4 packed 16-bit integers in the low 8 bytes of xmm2/m64 to 4 packed 32-bit</span>
+<span class="doccomment">/// integers in xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMOVSXWD</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x23</span>];
+
+<span class="doccomment">/// Sign extend 2 packed 32-bit integers in the low 8 bytes of xmm2/m64 to 2 packed 64-bit</span>
+<span class="doccomment">/// integers in xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMOVSXDQ</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x25</span>];
+
+<span class="doccomment">/// Zero extend 8 packed 8-bit integers in the low 8 bytes of xmm2/m64 to 8 packed 16-bit</span>
+<span class="doccomment">/// integers in xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMOVZXBW</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x30</span>];
+
+<span class="doccomment">/// Zero extend 4 packed 16-bit integers in the low 8 bytes of xmm2/m64 to 4 packed 32-bit</span>
+<span class="doccomment">/// integers in xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMOVZXWD</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x33</span>];
+
+<span class="doccomment">/// Zero extend 2 packed 32-bit integers in the low 8 bytes of xmm2/m64 to 2 packed 64-bit</span>
+<span class="doccomment">/// integers in xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMOVZXDQ</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x35</span>];
+
+<span class="doccomment">/// Multiply the packed signed word integers in xmm1 and xmm2/m128, and store the low 16 bits of</span>
+<span class="doccomment">/// the results in xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMULLW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xd5</span>];
+
+<span class="doccomment">/// Multiply the packed doubleword signed integers in xmm1 and xmm2/m128 and store the low 32</span>
+<span class="doccomment">/// bits of each product in xmm1 (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMULLD</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x40</span>];
+
+<span class="doccomment">/// Multiply the packed quadword signed integers in xmm2 and xmm3/m128 and store the low 64</span>
+<span class="doccomment">/// bits of each product in xmm1 (AVX512VL/DQ). Requires an EVEX encoding.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PMULLQ</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x40</span>];
+
+<span class="doccomment">/// Pop top of stack into r{16,32,64}; increment stack pointer.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">POP_REG</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x58</span>];
+
+<span class="doccomment">/// Returns the count of number of bits set to 1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">POPCNT</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0xb8</span>];
+
+<span class="doccomment">/// Bitwise OR of xmm2/m128 and xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">POR</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xeb</span>];
+
+<span class="doccomment">/// Shuffle bytes in xmm1 according to contents of xmm2/m128 (SSE3).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSHUFB</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x00</span>];
+
+<span class="doccomment">/// Shuffle the doublewords in xmm2/m128 based on the encoding in imm8 and</span>
+<span class="doccomment">/// store the result in xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSHUFD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x70</span>];
+
+<span class="doccomment">/// Shift words in xmm1 by imm8; the direction and sign-bit behavior is controlled by the RRR</span>
+<span class="doccomment">/// digit used in the ModR/M byte (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PS_W_IMM</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x71</span>];
+
+<span class="doccomment">/// Shift doublewords in xmm1 by imm8; the direction and sign-bit behavior is controlled by the RRR</span>
+<span class="doccomment">/// digit used in the ModR/M byte (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PS_D_IMM</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x72</span>];
+
+<span class="doccomment">/// Shift quadwords in xmm1 by imm8; the direction and sign-bit behavior is controlled by the RRR</span>
+<span class="doccomment">/// digit used in the ModR/M byte (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PS_Q_IMM</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x73</span>];
+
+<span class="doccomment">/// Shift words in xmm1 left by xmm2/m128 while shifting in 0s (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSLLW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xf1</span>];
+
+<span class="doccomment">/// Shift doublewords in xmm1 left by xmm2/m128 while shifting in 0s (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSLLD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xf2</span>];
+
+<span class="doccomment">/// Shift quadwords in xmm1 left by xmm2/m128 while shifting in 0s (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSLLQ</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xf3</span>];
+
+<span class="doccomment">/// Shift words in xmm1 right by xmm2/m128 while shifting in 0s (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSRLW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xd1</span>];
+
+<span class="doccomment">/// Shift doublewords in xmm1 right by xmm2/m128 while shifting in 0s (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSRLD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xd2</span>];
+
+<span class="doccomment">/// Shift quadwords in xmm1 right by xmm2/m128 while shifting in 0s (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSRLQ</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xd3</span>];
+
+<span class="doccomment">/// Shift words in xmm1 right by xmm2/m128 while shifting in sign bits (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSRAW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xe1</span>];
+
+<span class="doccomment">/// Shift doublewords in xmm1 right by xmm2/m128 while shifting in sign bits (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSRAD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xe2</span>];
+
+<span class="doccomment">/// Subtract packed byte integers in xmm2/m128 from packed byte integers in xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSUBB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xf8</span>];
+
+<span class="doccomment">/// Subtract packed word integers in xmm2/m128 from packed word integers in xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSUBW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xf9</span>];
+
+<span class="doccomment">/// Subtract packed doubleword integers in xmm2/m128 from doubleword byte integers in xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSUBD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xfa</span>];
+
+<span class="doccomment">/// Subtract packed quadword integers in xmm2/m128 from xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSUBQ</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xfb</span>];
+
+<span class="doccomment">/// Subtract packed signed byte integers in xmm2/m128 from packed signed byte integers in xmm1</span>
+<span class="doccomment">/// and saturate results (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSUBSB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xe8</span>];
+
+<span class="doccomment">/// Subtract packed signed word integers in xmm2/m128 from packed signed word integers in xmm1</span>
+<span class="doccomment">/// and saturate results (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSUBSW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xe9</span>];
+
+<span class="doccomment">/// Subtract packed unsigned byte integers in xmm2/m128 from packed unsigned byte integers in xmm1</span>
+<span class="doccomment">/// and saturate results (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSUBUSB</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xd8</span>];
+
+<span class="doccomment">/// Subtract packed unsigned word integers in xmm2/m128 from packed unsigned word integers in xmm1</span>
+<span class="doccomment">/// and saturate results (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PSUBUSW</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xd9</span>];
+
+<span class="doccomment">/// Set ZF if xmm2/m128 AND xmm1 result is all 0s; set CF if xmm2/m128 AND NOT xmm1 result is all</span>
+<span class="doccomment">/// 0s (SSE4.1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PTEST</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x38</span>, <span class="number">0x17</span>];
+
+<span class="doccomment">/// Push r{16,32,64}.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PUSH_REG</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x50</span>];
+
+<span class="doccomment">/// Logical exclusive OR (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">PXOR</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0xef</span>];
+
+<span class="doccomment">/// Near return to calling procedure.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">RET_NEAR</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xc3</span>];
+
+<span class="doccomment">/// General rotation opcode. Kind of rotation depends on encoding.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ROTATE_CL</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xd3</span>];
+
+<span class="doccomment">/// General rotation opcode. Kind of rotation depends on encoding.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ROTATE_IMM8</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0xc1</span>];
+
+<span class="doccomment">/// Round scalar doubl-precision floating-point values.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ROUNDSD</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x3a</span>, <span class="number">0x0b</span>];
+
+<span class="doccomment">/// Round scalar single-precision floating-point values.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ROUNDSS</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x3a</span>, <span class="number">0x0a</span>];
+
+<span class="doccomment">/// Subtract with borrow r{16,32,64} from r/m of the same size.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SBB</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x19</span>];
+
+<span class="doccomment">/// Set byte if overflow (OF=1).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SET_BYTE_IF_OVERFLOW</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x90</span>];
+
+<span class="doccomment">/// Compute the square root of the packed double-precision floating-point values and store the</span>
+<span class="doccomment">/// result in xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SQRTPD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x51</span>];
+
+<span class="doccomment">/// Compute the square root of the packed double-precision floating-point values and store the</span>
+<span class="doccomment">/// result in xmm1 (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SQRTPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x51</span>];
+
+<span class="doccomment">/// Compute square root of scalar double-precision floating-point value.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SQRTSD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x51</span>];
+
+<span class="doccomment">/// Compute square root of scalar single-precision value.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SQRTSS</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x51</span>];
+
+<span class="doccomment">/// Subtract r{16,32,64} from r/m of same size.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SUB</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x29</span>];
+
+<span class="doccomment">/// Subtract packed double-precision floating-point values in xmm2/mem from xmm1 and store result</span>
+<span class="doccomment">/// in xmm1 (SSE2).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SUBPD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x5c</span>];
+
+<span class="doccomment">/// Subtract packed single-precision floating-point values in xmm2/mem from xmm1 and store result</span>
+<span class="doccomment">/// in xmm1 (SSE).</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SUBPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x5c</span>];
+
+<span class="doccomment">/// Subtract the low double-precision floating-point value in xmm2/m64 from xmm1</span>
+<span class="doccomment">/// and store the result in xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SUBSD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf2</span>, <span class="number">0x0f</span>, <span class="number">0x5c</span>];
+
+<span class="doccomment">/// Subtract the low single-precision floating-point value in xmm2/m32 from xmm1</span>
+<span class="doccomment">/// and store the result in xmm1.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">SUBSS</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0x5c</span>];
+
+<span class="doccomment">/// AND r8 with r/m8; set SF, ZF, PF according to result.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">TEST_BYTE_REG</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x84</span>];
+
+<span class="doccomment">/// AND {r16, r32, r64} with r/m of the same size; set SF, ZF, PF according to result.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">TEST_REG</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x85</span>];
+
+<span class="doccomment">/// Count the number of trailing zero bits.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">TZCNT</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0xf3</span>, <span class="number">0x0f</span>, <span class="number">0xbc</span>];
+
+<span class="doccomment">/// Compare low double-precision floating-point values in xmm1 and xmm2/mem64</span>
+<span class="doccomment">/// and set the EFLAGS flags accordingly.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">UCOMISD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x2e</span>];
+
+<span class="doccomment">/// Compare low single-precision floating-point values in xmm1 and xmm2/mem32</span>
+<span class="doccomment">/// and set the EFLAGS flags accordingly.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">UCOMISS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x2e</span>];
+
+<span class="doccomment">/// Raise invalid opcode instruction.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">UNDEFINED2</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x0b</span>];
+
+<span class="doccomment">/// imm{16,32} XOR r/m{16,32,64}, possibly sign-extended.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">XOR_IMM</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x81</span>];
+
+<span class="doccomment">/// r/m{16,32,64} XOR sign-extended imm8.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">XOR_IMM8_SIGN_EXTEND</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x83</span>];
+
+<span class="doccomment">/// r/m{16,32,64} XOR register of the same size.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">XOR</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x31</span>];
+
+<span class="doccomment">/// r/m8 XOR r8.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">XORB</span>: [<span class="ident">u8</span>; <span class="number">1</span>] <span class="op">=</span> [<span class="number">0x30</span>];
+
+<span class="doccomment">/// Bitwise logical XOR of packed double-precision floating-point values.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">XORPD</span>: [<span class="ident">u8</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">0x66</span>, <span class="number">0x0f</span>, <span class="number">0x57</span>];
+
+<span class="doccomment">/// Bitwise logical XOR of packed single-precision floating-point values.</span>
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">XORPS</span>: [<span class="ident">u8</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">0x0f</span>, <span class="number">0x57</span>];
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../../";window.currentCrate = "cranelift_codegen_meta";</script><script src="../../../../aliases.js"></script><script src="../../../../main.js"></script><script src="../../../../source-script.js"></script><script src="../../../../source-files.js"></script><script defer src="../../../../search-index.js"></script></body></html>

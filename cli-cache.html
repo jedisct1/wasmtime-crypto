@@ -1,0 +1,423 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Cache Configuration - Wasmtime</title>
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body class="light">
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            document.body.className = theme;
+            document.querySelector('html').className = theme + ' js';
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><a href="tutorial.html"><strong aria-hidden="true">2.</strong> Tutorial</a></li><li><ol class="section"><li><a href="tutorial-create-hello-world.html"><strong aria-hidden="true">2.1.</strong> Creating hello-world.wasm</a></li><li><a href="tutorial-run-hello-world.html"><strong aria-hidden="true">2.2.</strong> Running hello-world.wasm</a></li></ol></li><li><a href="examples.html"><strong aria-hidden="true">3.</strong> Examples</a></li><li><ol class="section"><li><a href="examples-markdown.html"><strong aria-hidden="true">3.1.</strong> Markdown parser</a></li><li><a href="examples-profiling.html"><strong aria-hidden="true">3.2.</strong> Profiling WebAssembly</a></li><li><ol class="section"><li><a href="examples-profiling-perf.html"><strong aria-hidden="true">3.2.1.</strong> Profiling with Perf</a></li><li><a href="examples-profiling-vtune.html"><strong aria-hidden="true">3.2.2.</strong> Profiling with VTune</a></li></ol></li><li><a href="examples-rust-embed.html"><strong aria-hidden="true">3.3.</strong> Embedding in Rust</a></li><li><ol class="section"><li><a href="examples-rust-hello-world.html"><strong aria-hidden="true">3.3.1.</strong> Hello, world!</a></li><li><a href="examples-rust-gcd.html"><strong aria-hidden="true">3.3.2.</strong> Calculating the GCD</a></li><li><a href="examples-rust-memory.html"><strong aria-hidden="true">3.3.3.</strong> Using linear memory</a></li><li><a href="examples-rust-wasi.html"><strong aria-hidden="true">3.3.4.</strong> WASI</a></li><li><a href="examples-rust-linking.html"><strong aria-hidden="true">3.3.5.</strong> Linking modules</a></li><li><a href="examples-rust-debugging.html"><strong aria-hidden="true">3.3.6.</strong> Debugging</a></li><li><a href="examples-rust-multi-value.html"><strong aria-hidden="true">3.3.7.</strong> Using multi-value</a></li></ol></li><li><a href="examples-c-embed.html"><strong aria-hidden="true">3.4.</strong> Embedding in C</a></li><li><ol class="section"><li><a href="examples-c-hello-world.html"><strong aria-hidden="true">3.4.1.</strong> Hello, world!</a></li><li><a href="examples-c-gcd.html"><strong aria-hidden="true">3.4.2.</strong> Calculating the GCD</a></li><li><a href="examples-c-memory.html"><strong aria-hidden="true">3.4.3.</strong> Using linear memory</a></li><li><a href="examples-c-wasi.html"><strong aria-hidden="true">3.4.4.</strong> WASI</a></li><li><a href="examples-c-linking.html"><strong aria-hidden="true">3.4.5.</strong> Linking modules</a></li><li><a href="examples-c-debugging.html"><strong aria-hidden="true">3.4.6.</strong> Debugging</a></li><li><a href="examples-c-multi-value.html"><strong aria-hidden="true">3.4.7.</strong> Using multi-value</a></li></ol></li></ol></li><li><a href="lang.html"><strong aria-hidden="true">4.</strong> Using WebAssembly from your lanugage</a></li><li><ol class="section"><li><a href="lang-rust.html"><strong aria-hidden="true">4.1.</strong> Rust</a></li><li><a href="lang-c.html"><strong aria-hidden="true">4.2.</strong> C</a></li><li><a href="lang-python.html"><strong aria-hidden="true">4.3.</strong> Python</a></li><li><a href="lang-dotnet.html"><strong aria-hidden="true">4.4.</strong> .NET</a></li><li><a href="lang-go.html"><strong aria-hidden="true">4.5.</strong> Go</a></li><li><a href="lang-bash.html"><strong aria-hidden="true">4.6.</strong> Bash</a></li></ol></li><li><a href="cli.html"><strong aria-hidden="true">5.</strong> Using the wasmtime CLI</a></li><li><ol class="section"><li><a href="cli-install.html"><strong aria-hidden="true">5.1.</strong> Installation</a></li><li><a href="cli-options.html"><strong aria-hidden="true">5.2.</strong> CLI Options</a></li><li><a href="cli-cache.html" class="active"><strong aria-hidden="true">5.3.</strong> Cache Configuration</a></li></ol></li><li><a href="wasm.html"><strong aria-hidden="true">6.</strong> Writing WebAssembly</a></li><li><ol class="section"><li><a href="wasm-rust.html"><strong aria-hidden="true">6.1.</strong> Rust</a></li><li><a href="wasm-c.html"><strong aria-hidden="true">6.2.</strong> C/C++</a></li><li><a href="wasm-wat.html"><strong aria-hidden="true">6.3.</strong> WebAssembly Text Format (*.wat)</a></li><li><a href="wasm-markdown.html"><strong aria-hidden="true">6.4.</strong> Example: Markdown Parser</a></li></ol></li><li><a href="stability.html"><strong aria-hidden="true">7.</strong> Stability</a></li><li><ol class="section"><li><a href="stability-release.html"><strong aria-hidden="true">7.1.</strong> Release Process</a></li><li><a href="stability-platform-support.html"><strong aria-hidden="true">7.2.</strong> Platform Support</a></li></ol></li><li><a href="security.html"><strong aria-hidden="true">8.</strong> Security</a></li><li><ol class="section"><li><a href="security-disclosure.html"><strong aria-hidden="true">8.1.</strong> Disclosure Policy</a></li><li><a href="security-sandboxing.html"><strong aria-hidden="true">8.2.</strong> Sandboxing</a></li></ol></li><li><a href="contributing.html"><strong aria-hidden="true">9.</strong> Contributing</a></li><li><ol class="section"><li><a href="contributing-building.html"><strong aria-hidden="true">9.1.</strong> Building</a></li><li><a href="contributing-testing.html"><strong aria-hidden="true">9.2.</strong> Testing</a></li><li><a href="contributing-fuzzing.html"><strong aria-hidden="true">9.3.</strong> Fuzzing</a></li><li><a href="contributing-ci.html"><strong aria-hidden="true">9.4.</strong> CI</a></li><li><a href="contributing-coding-guidelines.html"><strong aria-hidden="true">9.5.</strong> Coding guidelines</a></li><li><a href="contributing-development-process.html"><strong aria-hidden="true">9.6.</strong> Development process</a></li><li><a href="contributing-release-process.html"><strong aria-hidden="true">9.7.</strong> Release Process</a></li><li><a href="contributing-governance.html"><strong aria-hidden="true">9.8.</strong> Governance</a></li><li><a href="contributing-coc.html"><strong aria-hidden="true">9.9.</strong> Code of Conduct</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Wasmtime</h1>
+
+                        <div class="right-buttons">
+                            <a href="print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#cache-configuration-of-wasmtime" id="cache-configuration-of-wasmtime">Cache Configuration of <code>wasmtime</code></a></h1>
+<p>The configuration file uses the <a href="https://github.com/toml-lang/toml">toml</a> format.
+You can create a configuration file at the default location with:</p>
+<pre><code class="language-sh">$ wasmtime config new
+</code></pre>
+<p>It will print the location regardless of the success.
+Please refer to the  <code>--help</code> message for using a custom location.</p>
+<p>All settings, except <code>enabled</code>, are <strong>optional</strong>.
+If the setting is not specified, the <strong>default</strong> value is used.
+<em><strong>Thus, if you don't know what values to use, don't specify them.</strong></em>
+The default values might be tuned in the future.</p>
+<p>Wasmtime assumes all the options are in the <code>cache</code> section.</p>
+<p>Example config:</p>
+<pre><code class="language-toml">[cache]
+enabled = true
+directory = &quot;/nfs-share/wasmtime-cache/&quot;
+cleanup-interval = &quot;30m&quot;
+files-total-size-soft-limit = &quot;1Gi&quot;
+</code></pre>
+<p>Please refer to the <a href="#how-does-the-cache-work">cache system</a> section to learn how it works.</p>
+<p>If you think some default value should be tuned, some new settings
+should be introduced or some behavior should be changed, you are
+welcome to discuss it and contribute to <a href="https://github.com/bytecodealliance/wasmtime">the Wasmtime repository</a>.</p>
+<h2><a class="header" href="#setting-enabled" id="setting-enabled">Setting <code>enabled</code></a></h2>
+<ul>
+<li><strong>type</strong>: boolean</li>
+<li><strong>format</strong>: <code>true | false</code></li>
+<li><strong>default</strong>: <code>true</code></li>
+</ul>
+<p>Specifies whether the cache system is used or not.</p>
+<p>This field is <em>mandatory</em>.
+The default value is used when configuration file is not specified
+and none exists at the default location.</p>
+<h2><a class="header" href="#setting-directory" id="setting-directory">Setting <code>directory</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (path)</li>
+<li><strong>default</strong>: look up <code>cache_dir</code> in <a href="https://crates.io/crates/directories">directories</a> crate</li>
+</ul>
+<p>Specifies where the cache directory is. Must be an absolute path.</p>
+<h2><a class="header" href="#setting-worker-event-queue-size" id="setting-worker-event-queue-size">Setting <code>worker-event-queue-size</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (SI prefix)</li>
+<li><strong>format</strong>: <code>&quot;{integer}(K | M | G | T | P)?&quot;</code></li>
+<li><strong>default</strong>: <code>&quot;16&quot;</code></li>
+</ul>
+<p>Size of <a href="#how-does-the-cache-work">cache worker</a> event queue.
+If the queue is full, incoming cache usage events will be dropped.</p>
+<h2><a class="header" href="#setting-baseline-compression-level" id="setting-baseline-compression-level">Setting <code>baseline-compression-level</code></a></h2>
+<ul>
+<li><strong>type</strong>: integer</li>
+<li><strong>default</strong>: <code>3</code>, the default zstd compression level</li>
+</ul>
+<p>Compression level used when a new cache file is being written by the <a href="#how-does-the-cache-work">cache system</a>.
+Wasmtime uses <a href="https://facebook.github.io/zstd/">zstd</a> compression.</p>
+<h2><a class="header" href="#setting-optimized-compression-level" id="setting-optimized-compression-level">Setting <code>optimized-compression-level</code></a></h2>
+<ul>
+<li><strong>type</strong>: integer</li>
+<li><strong>default</strong>: <code>20</code></li>
+</ul>
+<p>Compression level used when the <a href="#how-does-the-cache-work">cache worker</a> decides to recompress a cache file.
+Wasmtime uses <a href="https://facebook.github.io/zstd/">zstd</a> compression.</p>
+<h2><a class="header" href="#setting-optimized-compression-usage-counter-threshold" id="setting-optimized-compression-usage-counter-threshold">Setting <code>optimized-compression-usage-counter-threshold</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (SI prefix)</li>
+<li><strong>format</strong>: <code>&quot;{integer}(K | M | G | T | P)?&quot;</code></li>
+<li><strong>default</strong>: <code>&quot;256&quot;</code></li>
+</ul>
+<p>One of the conditions for the <a href="#how-does-the-cache-work">cache worker</a> to recompress a cache file
+is to have usage count of the file exceeding this threshold.</p>
+<h2><a class="header" href="#setting-cleanup-interval" id="setting-cleanup-interval">Setting <code>cleanup-interval</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (duration)</li>
+<li><strong>format</strong>: <code>&quot;{integer}(s | m | h | d)&quot;</code></li>
+<li><strong>default</strong>: <code>&quot;1h&quot;</code></li>
+</ul>
+<p>When the <a href="#how-does-the-cache-work">cache worker</a> is notified about a cache file being updated by the <a href="#how-does-the-cache-work">cache system</a>
+and this interval has already passed since last cleaning up,
+the worker will attempt a new cleanup.</p>
+<p>Please also refer to <a href="#setting-allowed-clock-drift-for-files-from-future"><code>allowed-clock-drift-for-files-from-future</code></a>.</p>
+<h2><a class="header" href="#setting-optimizing-compression-task-timeout" id="setting-optimizing-compression-task-timeout">Setting <code>optimizing-compression-task-timeout</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (duration)</li>
+<li><strong>format</strong>: <code>&quot;{integer}(s | m | h | d)&quot;</code></li>
+<li><strong>default</strong>: <code>&quot;30m&quot;</code></li>
+</ul>
+<p>When the <a href="#how-does-the-cache-work">cache worker</a> decides to recompress a cache file, it makes sure that
+no other worker has started the task for this file within the last
+<a href="#setting-optimizing-compression-task-timeout"><code>optimizing-compression-task-timeout</code></a> interval.
+If some worker has started working on it, other workers are skipping this task.</p>
+<p>Please also refer to the <a href="#setting-allowed-clock-drift-for-files-from-future"><code>allowed-clock-drift-for-files-from-future</code></a> section.</p>
+<h2><a class="header" href="#setting-allowed-clock-drift-for-files-from-future" id="setting-allowed-clock-drift-for-files-from-future">Setting <code>allowed-clock-drift-for-files-from-future</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (duration)</li>
+<li><strong>format</strong>: <code>&quot;{integer}(s | m | h | d)&quot;</code></li>
+<li><strong>default</strong>: <code>&quot;1d&quot;</code></li>
+</ul>
+<h3><a class="header" href="#locks" id="locks">Locks</a></h3>
+<p>When the <a href="#how-does-the-cache-work">cache worker</a> attempts acquiring a lock for some task,
+it checks if some other worker has already acquired such a lock.
+To be fault tolerant and eventually execute every task,
+the locks expire after some interval.
+However, because of clock drifts and different timezones,
+it would happen that some lock was created in the future.
+This setting defines a tolerance limit for these locks.
+If the time has been changed in the system (i.e. two years backwards),
+the <a href="#how-does-the-cache-work">cache system</a> should still work properly.
+Thus, these locks will be treated as expired
+(assuming the tolerance is not too big).</p>
+<h3><a class="header" href="#cache-files" id="cache-files">Cache files</a></h3>
+<p>Similarly to the locks, the cache files or their metadata might
+have modification time in distant future.
+The cache system tries to keep these files as long as possible.
+If the limits are not reached, the cache files will not be deleted.
+Otherwise, they will be treated as the oldest files, so they might survive.
+If the user actually uses the cache file, the modification time will be updated.</p>
+<h2><a class="header" href="#setting-file-count-soft-limit" id="setting-file-count-soft-limit">Setting <code>file-count-soft-limit</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (SI prefix)</li>
+<li><strong>format</strong>: <code>&quot;{integer}(K | M | G | T | P)?&quot;</code></li>
+<li><strong>default</strong>: <code>&quot;65536&quot;</code></li>
+</ul>
+<p>Soft limit for the file count in the cache directory.</p>
+<p>This doesn't include files with metadata.
+To learn more, please refer to the <a href="#how-does-the-cache-work">cache system</a> section.</p>
+<h2><a class="header" href="#setting-files-total-size-soft-limit" id="setting-files-total-size-soft-limit">Setting <code>files-total-size-soft-limit</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (disk space)</li>
+<li><strong>format</strong>: <code>&quot;{integer}(K | Ki | M | Mi | G | Gi | T | Ti | P | Pi)?&quot;</code></li>
+<li><strong>default</strong>: <code>&quot;512Mi&quot;</code></li>
+</ul>
+<p>Soft limit for the total size* of files in the cache directory.</p>
+<p>This doesn't include files with metadata.
+To learn more, please refer to the <a href="#how-does-the-cache-work">cache system</a> section.</p>
+<p>*this is the file size, not the space physically occupied on the disk.</p>
+<h2><a class="header" href="#setting-file-count-limit-percent-if-deleting" id="setting-file-count-limit-percent-if-deleting">Setting <code>file-count-limit-percent-if-deleting</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (percent)</li>
+<li><strong>format</strong>: <code>&quot;{integer}%&quot;</code></li>
+<li><strong>default</strong>: <code>&quot;70%&quot;</code></li>
+</ul>
+<p>If <a href="#setting-file-count-soft-limit"><code>file-count-soft-limit</code></a> is exceeded and the <a href="#how-does-the-cache-work">cache worker</a> performs the cleanup task,
+then the worker will delete some cache files, so after the task,
+the file count should not exceed
+<a href="#setting-file-count-soft-limit"><code>file-count-soft-limit</code></a> * <a href="#setting-file-count-limit-percent-if-deleting"><code>file-count-limit-percent-if-deleting</code></a>.</p>
+<p>This doesn't include files with metadata.
+To learn more, please refer to the <a href="#how-does-the-cache-work">cache system</a> section.</p>
+<h2><a class="header" href="#setting-files-total-size-limit-percent-if-deleting" id="setting-files-total-size-limit-percent-if-deleting">Setting <code>files-total-size-limit-percent-if-deleting</code></a></h2>
+<ul>
+<li><strong>type</strong>: string (percent)</li>
+<li><strong>format</strong>: <code>&quot;{integer}%&quot;</code></li>
+<li><strong>default</strong>: <code>&quot;70%&quot;</code></li>
+</ul>
+<p>If <a href="#setting-files-total-size-soft-limit"><code>files-total-size-soft-limit</code></a> is exceeded and <a href="#how-does-the-cache-work">cache worker</a> performs the cleanup task,
+then the worker will delete some cache files, so after the task,
+the files total size should not exceed
+<a href="#setting-files-total-size-soft-limit"><code>files-total-size-soft-limit</code></a> * <a href="#setting-files-total-size-limit-percent-if-deleting"><code>files-total-size-limit-percent-if-deleting</code></a>.</p>
+<p>This doesn't include files with metadata.
+To learn more, please refer to the <a href="#how-does-the-cache-work">cache system</a> section.</p>
+<h1><a class="header" href="#how-does-the-cache-work" id="how-does-the-cache-work">How does the cache work?</a></h1>
+<p><strong>This is an implementation detail and might change in the future.</strong>
+Information provided here is meant to help understanding the big picture
+and configuring the cache.</p>
+<p>There are two main components - the <em>cache system</em> and the <em>cache worker</em>.</p>
+<h2><a class="header" href="#cache-system" id="cache-system">Cache system</a></h2>
+<p>Handles GET and UPDATE cache requests.</p>
+<ul>
+<li><strong>GET request</strong> - simply loads the cache from disk if it is there.</li>
+<li><strong>UPDATE request</strong> - compresses received data with <a href="https://facebook.github.io/zstd/">zstd</a> and <a href="#setting-baseline-compression-level"><code>baseline-compression-level</code></a>, then writes the data to the disk.</li>
+</ul>
+<p>In case of successful handling of a request, it notifies the <em>cache worker</em> about this
+event using the queue.
+The queue has a limited size of <a href="#setting-worker-event-queue-size"><code>worker-event-queue-size</code></a>. If it is full, it will drop
+new events until the <em>cache worker</em> pops some event from the queue.</p>
+<h2><a class="header" href="#cache-worker" id="cache-worker">Cache worker</a></h2>
+<p>The cache worker runs in a single thread with lower priority and pops events from the queue
+in a loop handling them one by one.</p>
+<h3><a class="header" href="#on-get-request" id="on-get-request">On GET request</a></h3>
+<ol>
+<li>
+<p>Read the statistics file for the cache file,
+increase the usage counter and write it back to the disk.</p>
+</li>
+<li>
+<p>Attempt recompressing the cache file if all of the following conditions are met:</p>
+<ul>
+<li>usage counter exceeds <a href="#setting-optimized-compression-usage-counter-threshold"><code>optimized-compression-usage-counter-threshold</code></a>,</li>
+<li>the file is compressed with compression level lower than <a href="#setting-optimized-compression-level"><code>optimized-compression-level</code></a>,</li>
+<li>no other worker has started working on this particular task within the last
+<a href="#setting-optimizing-compression-task-timeout"><code>optimizing-compression-task-timeout</code></a> interval.</li>
+</ul>
+<p>When recompressing, <a href="#setting-optimized-compression-level"><code>optimized-compression-level</code></a> is used as a compression level.</p>
+</li>
+</ol>
+<h3><a class="header" href="#on-update-request" id="on-update-request">On UPDATE request</a></h3>
+<ol>
+<li>Write a fresh statistics file for the cache file.</li>
+<li>Clean up the cache if no worker has attempted to do this within the last <a href="#setting-cleanup-interval"><code>cleanup-interval</code></a>.
+During this task:
+<ul>
+<li>all unrecognized files and expired task locks in cache directory will be deleted</li>
+<li>if <a href="#setting-file-count-soft-limit"><code>file-count-soft-limit</code></a> or <a href="#setting-files-total-size-soft-limit"><code>files-total-size-soft-limit</code></a> is exceeded,
+then recognized files will be deleted according to
+<a href="#setting-file-count-limit-percent-if-deleting"><code>file-count-limit-percent-if-deleting</code></a> and <a href="#setting-files-total-size-limit-percent-if-deleting"><code>files-total-size-limit-percent-if-deleting</code></a>.
+Wasmtime uses <a href="https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU)">Least Recently Used (LRU)</a> cache replacement policy and requires that
+the filesystem maintains proper mtime (modification time) of the files.
+Files with future mtimes are treated specially - more details
+in <a href="#setting-allowed-clock-drift-for-files-from-future"><code>allowed-clock-drift-for-files-from-future</code></a>.</li>
+</ul>
+</li>
+</ol>
+<h3><a class="header" href="#metadata-files" id="metadata-files">Metadata files</a></h3>
+<ul>
+<li>every cached WebAssembly module has its own statistics file</li>
+<li>every lock is a file</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="cli-options.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="wasm.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="cli-options.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a href="wasm.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

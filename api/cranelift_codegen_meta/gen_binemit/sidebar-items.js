@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["gen_isa",""],["gen_recipe","Generate code to handle a single recipe."],["generate",""],["unwrap_values","Emit code that unwraps values living in registers or stack slots."]]});

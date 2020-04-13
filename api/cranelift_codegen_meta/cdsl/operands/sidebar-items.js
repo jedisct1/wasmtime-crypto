@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["OperandKindFields",""]],"struct":[["Operand","An instruction operand can be an immediate, an SSA value, or an entity reference. The type of the operand is one of:"],["OperandKind",""]],"type":[["EnumValues",""]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["define",""]],"struct":[["RecipeGroup","An helper to create recipes and use them when defining the RISCV encodings."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ExecutionError",""]],"fn":[["translate",""],["translate_function",""]],"struct":[["CodeGenSession",""],["ExecutableModule",""],["TranslatedModule",""]],"trait":[["ModuleContext",""],["Signature",""]]});

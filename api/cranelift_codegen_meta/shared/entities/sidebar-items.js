@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["new","Small helper to initialize an OperandBuilder with the right kind, for a given name and doc."]],"struct":[["EntityRefs",""]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["OwnedFlagsOrIsa","Like `FlagsOrIsa`, but holds ownership."]],"fn":[["parse_sets_and_triple","Parse \"set\" and \"triple\" commands."],["read_to_string","Read an entire file into a string."]]});

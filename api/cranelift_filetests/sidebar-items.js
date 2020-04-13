@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["run","Main entry point for `clif-util test`."],["run_passes","Used for 'pass' subcommand. Commands are interpreted as test and executed."]],"struct":[["FunctionRunner","Run a function on a host"]]});

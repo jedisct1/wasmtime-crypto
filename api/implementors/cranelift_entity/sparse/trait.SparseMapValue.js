@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["cranelift_codegen_meta"] = [{"text":"impl <a class=\"trait\" href=\"cranelift_entity/sparse/trait.SparseMapValue.html\" title=\"trait cranelift_entity::sparse::SparseMapValue\">SparseMapValue</a>&lt;<a class=\"struct\" href=\"cranelift_codegen_meta/cdsl/ast/struct.DefIndex.html\" title=\"struct cranelift_codegen_meta::cdsl::ast::DefIndex\">DefIndex</a>&gt; for <a class=\"struct\" href=\"cranelift_codegen_meta/cdsl/ast/struct.Block.html\" title=\"struct cranelift_codegen_meta::cdsl::ast::Block\">Block</a>","synthetic":false,"types":["cranelift_codegen_meta::cdsl::ast::Block"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

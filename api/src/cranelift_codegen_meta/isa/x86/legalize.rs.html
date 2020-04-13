@@ -1,0 +1,1403 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `cranelift/codegen/meta/src/isa/x86/legalize.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>legalize.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script src="../../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="shortcut icon" href="../../../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../../cranelift_codegen_meta/index.html'><div class='logo-container'><img src='../../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../../../settings.html"><img src="../../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<span id="2">  2</span>
+<span id="3">  3</span>
+<span id="4">  4</span>
+<span id="5">  5</span>
+<span id="6">  6</span>
+<span id="7">  7</span>
+<span id="8">  8</span>
+<span id="9">  9</span>
+<span id="10"> 10</span>
+<span id="11"> 11</span>
+<span id="12"> 12</span>
+<span id="13"> 13</span>
+<span id="14"> 14</span>
+<span id="15"> 15</span>
+<span id="16"> 16</span>
+<span id="17"> 17</span>
+<span id="18"> 18</span>
+<span id="19"> 19</span>
+<span id="20"> 20</span>
+<span id="21"> 21</span>
+<span id="22"> 22</span>
+<span id="23"> 23</span>
+<span id="24"> 24</span>
+<span id="25"> 25</span>
+<span id="26"> 26</span>
+<span id="27"> 27</span>
+<span id="28"> 28</span>
+<span id="29"> 29</span>
+<span id="30"> 30</span>
+<span id="31"> 31</span>
+<span id="32"> 32</span>
+<span id="33"> 33</span>
+<span id="34"> 34</span>
+<span id="35"> 35</span>
+<span id="36"> 36</span>
+<span id="37"> 37</span>
+<span id="38"> 38</span>
+<span id="39"> 39</span>
+<span id="40"> 40</span>
+<span id="41"> 41</span>
+<span id="42"> 42</span>
+<span id="43"> 43</span>
+<span id="44"> 44</span>
+<span id="45"> 45</span>
+<span id="46"> 46</span>
+<span id="47"> 47</span>
+<span id="48"> 48</span>
+<span id="49"> 49</span>
+<span id="50"> 50</span>
+<span id="51"> 51</span>
+<span id="52"> 52</span>
+<span id="53"> 53</span>
+<span id="54"> 54</span>
+<span id="55"> 55</span>
+<span id="56"> 56</span>
+<span id="57"> 57</span>
+<span id="58"> 58</span>
+<span id="59"> 59</span>
+<span id="60"> 60</span>
+<span id="61"> 61</span>
+<span id="62"> 62</span>
+<span id="63"> 63</span>
+<span id="64"> 64</span>
+<span id="65"> 65</span>
+<span id="66"> 66</span>
+<span id="67"> 67</span>
+<span id="68"> 68</span>
+<span id="69"> 69</span>
+<span id="70"> 70</span>
+<span id="71"> 71</span>
+<span id="72"> 72</span>
+<span id="73"> 73</span>
+<span id="74"> 74</span>
+<span id="75"> 75</span>
+<span id="76"> 76</span>
+<span id="77"> 77</span>
+<span id="78"> 78</span>
+<span id="79"> 79</span>
+<span id="80"> 80</span>
+<span id="81"> 81</span>
+<span id="82"> 82</span>
+<span id="83"> 83</span>
+<span id="84"> 84</span>
+<span id="85"> 85</span>
+<span id="86"> 86</span>
+<span id="87"> 87</span>
+<span id="88"> 88</span>
+<span id="89"> 89</span>
+<span id="90"> 90</span>
+<span id="91"> 91</span>
+<span id="92"> 92</span>
+<span id="93"> 93</span>
+<span id="94"> 94</span>
+<span id="95"> 95</span>
+<span id="96"> 96</span>
+<span id="97"> 97</span>
+<span id="98"> 98</span>
+<span id="99"> 99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+</pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">cdsl</span>::<span class="ident">ast</span>::{<span class="ident">constant</span>, <span class="ident">var</span>, <span class="ident">ExprBuilder</span>, <span class="ident">Literal</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">cdsl</span>::<span class="ident">instructions</span>::{<span class="ident">vector</span>, <span class="ident">Bindable</span>, <span class="ident">InstructionGroup</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">cdsl</span>::<span class="ident">types</span>::{<span class="ident">LaneType</span>, <span class="ident">ValueType</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">cdsl</span>::<span class="ident">xform</span>::<span class="ident">TransformGroupBuilder</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">shared</span>::<span class="ident">types</span>::<span class="ident">Float</span>::{<span class="ident">F32</span>, <span class="ident">F64</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">shared</span>::<span class="ident">types</span>::<span class="ident">Int</span>::{<span class="ident">I16</span>, <span class="ident">I32</span>, <span class="ident">I64</span>, <span class="ident">I8</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">shared</span>::<span class="ident">Definitions</span> <span class="kw">as</span> <span class="ident">SharedDefinitions</span>;
+
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">many_single_char_names</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">define</span>(<span class="ident">shared</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SharedDefinitions</span>, <span class="ident">x86_instructions</span>: <span class="kw-2">&amp;</span><span class="ident">InstructionGroup</span>) {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">TransformGroupBuilder</span>::<span class="ident">new</span>(
+        <span class="string">&quot;x86_expand&quot;</span>,
+        <span class="string">r#&quot;
+    Legalize instructions by expansion.
+
+    Use x86-specific instructions if needed.&quot;#</span>,
+    )
+    .<span class="ident">isa</span>(<span class="string">&quot;x86&quot;</span>)
+    .<span class="ident">chain_with</span>(<span class="ident">shared</span>.<span class="ident">transform_groups</span>.<span class="ident">by_name</span>(<span class="string">&quot;expand_flags&quot;</span>).<span class="ident">id</span>);
+
+    <span class="comment">// List of instructions.</span>
+    <span class="kw">let</span> <span class="ident">insts</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">shared</span>.<span class="ident">instructions</span>;
+    <span class="kw">let</span> <span class="ident">band</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;band&quot;</span>);
+    <span class="kw">let</span> <span class="ident">bor</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;bor&quot;</span>);
+    <span class="kw">let</span> <span class="ident">clz</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;clz&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ctz</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;ctz&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fcmp</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fcmp&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fcvt_from_uint</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fcvt_from_uint&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fcvt_to_sint</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fcvt_to_sint&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fcvt_to_uint</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fcvt_to_uint&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fcvt_to_sint_sat</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fcvt_to_sint_sat&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fcvt_to_uint_sat</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fcvt_to_uint_sat&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fmax</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fmax&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fmin</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fmin&quot;</span>);
+    <span class="kw">let</span> <span class="ident">iadd</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;iadd&quot;</span>);
+    <span class="kw">let</span> <span class="ident">iconst</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;iconst&quot;</span>);
+    <span class="kw">let</span> <span class="ident">imul</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;imul&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ineg</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;ineg&quot;</span>);
+    <span class="kw">let</span> <span class="ident">isub</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;isub&quot;</span>);
+    <span class="kw">let</span> <span class="ident">popcnt</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;popcnt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">sdiv</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;sdiv&quot;</span>);
+    <span class="kw">let</span> <span class="ident">selectif</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;selectif&quot;</span>);
+    <span class="kw">let</span> <span class="ident">smulhi</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;smulhi&quot;</span>);
+    <span class="kw">let</span> <span class="ident">srem</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;srem&quot;</span>);
+    <span class="kw">let</span> <span class="ident">tls_value</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;tls_value&quot;</span>);
+    <span class="kw">let</span> <span class="ident">udiv</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;udiv&quot;</span>);
+    <span class="kw">let</span> <span class="ident">umulhi</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;umulhi&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ushr_imm</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;ushr_imm&quot;</span>);
+    <span class="kw">let</span> <span class="ident">urem</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;urem&quot;</span>);
+
+    <span class="kw">let</span> <span class="ident">x86_bsf</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_bsf&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_bsr</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_bsr&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_umulx</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_umulx&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_smulx</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_smulx&quot;</span>);
+
+    <span class="kw">let</span> <span class="ident">imm</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">shared</span>.<span class="ident">imm</span>;
+
+    <span class="comment">// Division and remainder.</span>
+    <span class="comment">//</span>
+    <span class="comment">// The srem expansion requires custom code because srem INT_MIN, -1 is not</span>
+    <span class="comment">// allowed to trap. The other ops need to check avoid_div_traps.</span>
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">sdiv</span>, <span class="string">&quot;expand_sdivrem&quot;</span>);
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">srem</span>, <span class="string">&quot;expand_sdivrem&quot;</span>);
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">udiv</span>, <span class="string">&quot;expand_udivrem&quot;</span>);
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">urem</span>, <span class="string">&quot;expand_udivrem&quot;</span>);
+
+    <span class="comment">// Double length (widening) multiplication.</span>
+    <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;a&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;x&quot;</span>);
+    <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;y&quot;</span>);
+    <span class="kw">let</span> <span class="ident">a1</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;a1&quot;</span>);
+    <span class="kw">let</span> <span class="ident">a2</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;a2&quot;</span>);
+    <span class="kw">let</span> <span class="ident">res_lo</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;res_lo&quot;</span>);
+    <span class="kw">let</span> <span class="ident">res_hi</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;res_hi&quot;</span>);
+
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">res_hi</span> <span class="op">=</span> <span class="ident">umulhi</span>(<span class="ident">x</span>, <span class="ident">y</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>((<span class="ident">res_lo</span>, <span class="ident">res_hi</span>) <span class="op">=</span> <span class="ident">x86_umulx</span>(<span class="ident">x</span>, <span class="ident">y</span>))],
+    );
+
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">res_hi</span> <span class="op">=</span> <span class="ident">smulhi</span>(<span class="ident">x</span>, <span class="ident">y</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>((<span class="ident">res_lo</span>, <span class="ident">res_hi</span>) <span class="op">=</span> <span class="ident">x86_smulx</span>(<span class="ident">x</span>, <span class="ident">y</span>))],
+    );
+
+    <span class="comment">// Floating point condition codes.</span>
+    <span class="comment">//</span>
+    <span class="comment">// The 8 condition codes in `supported_floatccs` are directly supported by a</span>
+    <span class="comment">// `ucomiss` or `ucomisd` instruction. The remaining codes need legalization</span>
+    <span class="comment">// patterns.</span>
+
+    <span class="kw">let</span> <span class="ident">floatcc_eq</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;eq&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_ord</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ord&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_ueq</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ueq&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_ne</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ne&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_uno</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;uno&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_one</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;one&quot;</span>);
+
+    <span class="comment">// Equality needs an explicit `ord` test which checks the parity bit.</span>
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">floatcc_eq</span>, <span class="ident">x</span>, <span class="ident">y</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a1</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">floatcc_ord</span>, <span class="ident">x</span>, <span class="ident">y</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a2</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">floatcc_ueq</span>, <span class="ident">x</span>, <span class="ident">y</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">a1</span>, <span class="ident">a2</span>)),
+        ],
+    );
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">floatcc_ne</span>, <span class="ident">x</span>, <span class="ident">y</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a1</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">floatcc_uno</span>, <span class="ident">x</span>, <span class="ident">y</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a2</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">floatcc_one</span>, <span class="ident">x</span>, <span class="ident">y</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">bor</span>(<span class="ident">a1</span>, <span class="ident">a2</span>)),
+        ],
+    );
+
+    <span class="kw">let</span> <span class="ident">floatcc_lt</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;lt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_gt</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;gt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_le</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;le&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_ge</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ge&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_ugt</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ugt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_ult</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ult&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_uge</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;uge&quot;</span>);
+    <span class="kw">let</span> <span class="ident">floatcc_ule</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ule&quot;</span>);
+
+    <span class="comment">// Inequalities that need to be reversed.</span>
+    <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="ident">cc</span>, <span class="ident">rev_cc</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span>[
+        (<span class="ident">floatcc_lt</span>, <span class="ident">floatcc_gt</span>),
+        (<span class="ident">floatcc_le</span>, <span class="ident">floatcc_ge</span>),
+        (<span class="ident">floatcc_ugt</span>, <span class="ident">floatcc_ult</span>),
+        (<span class="ident">floatcc_uge</span>, <span class="ident">floatcc_ule</span>),
+    ] {
+        <span class="ident">group</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">cc</span>, <span class="ident">x</span>, <span class="ident">y</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">rev_cc</span>, <span class="ident">y</span>, <span class="ident">x</span>))]);
+    }
+
+    <span class="comment">// We need to modify the CFG for min/max legalization.</span>
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">fmin</span>, <span class="string">&quot;expand_minmax&quot;</span>);
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">fmax</span>, <span class="string">&quot;expand_minmax&quot;</span>);
+
+    <span class="comment">// Conversions from unsigned need special handling.</span>
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">fcvt_from_uint</span>, <span class="string">&quot;expand_fcvt_from_uint&quot;</span>);
+    <span class="comment">// Conversions from float to int can trap and modify the control flow graph.</span>
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">fcvt_to_sint</span>, <span class="string">&quot;expand_fcvt_to_sint&quot;</span>);
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">fcvt_to_uint</span>, <span class="string">&quot;expand_fcvt_to_uint&quot;</span>);
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">fcvt_to_sint_sat</span>, <span class="string">&quot;expand_fcvt_to_sint_sat&quot;</span>);
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">fcvt_to_uint_sat</span>, <span class="string">&quot;expand_fcvt_to_uint_sat&quot;</span>);
+
+    <span class="comment">// Count leading and trailing zeroes, for baseline x86_64</span>
+    <span class="kw">let</span> <span class="ident">c_minus_one</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;c_minus_one&quot;</span>);
+    <span class="kw">let</span> <span class="ident">c_thirty_one</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;c_thirty_one&quot;</span>);
+    <span class="kw">let</span> <span class="ident">c_thirty_two</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;c_thirty_two&quot;</span>);
+    <span class="kw">let</span> <span class="ident">c_sixty_three</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;c_sixty_three&quot;</span>);
+    <span class="kw">let</span> <span class="ident">c_sixty_four</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;c_sixty_four&quot;</span>);
+    <span class="kw">let</span> <span class="ident">index1</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;index1&quot;</span>);
+    <span class="kw">let</span> <span class="ident">r2flags</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;r2flags&quot;</span>);
+    <span class="kw">let</span> <span class="ident">index2</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;index2&quot;</span>);
+
+    <span class="kw">let</span> <span class="ident">intcc_eq</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;eq&quot;</span>);
+    <span class="kw">let</span> <span class="ident">imm64_minus_one</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="op">-</span><span class="number">1</span>);
+    <span class="kw">let</span> <span class="ident">imm64_63</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">63</span>);
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">clz</span>.<span class="ident">I64</span>(<span class="ident">x</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c_minus_one</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">imm64_minus_one</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c_sixty_three</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">imm64_63</span>)),
+            <span class="macro">def</span><span class="macro">!</span>((<span class="ident">index1</span>, <span class="ident">r2flags</span>) <span class="op">=</span> <span class="ident">x86_bsr</span>(<span class="ident">x</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">index2</span> <span class="op">=</span> <span class="ident">selectif</span>(<span class="ident">intcc_eq</span>, <span class="ident">r2flags</span>, <span class="ident">c_minus_one</span>, <span class="ident">index1</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">isub</span>(<span class="ident">c_sixty_three</span>, <span class="ident">index2</span>)),
+        ],
+    );
+
+    <span class="kw">let</span> <span class="ident">imm64_31</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">31</span>);
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">clz</span>.<span class="ident">I32</span>(<span class="ident">x</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c_minus_one</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">imm64_minus_one</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c_thirty_one</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">imm64_31</span>)),
+            <span class="macro">def</span><span class="macro">!</span>((<span class="ident">index1</span>, <span class="ident">r2flags</span>) <span class="op">=</span> <span class="ident">x86_bsr</span>(<span class="ident">x</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">index2</span> <span class="op">=</span> <span class="ident">selectif</span>(<span class="ident">intcc_eq</span>, <span class="ident">r2flags</span>, <span class="ident">c_minus_one</span>, <span class="ident">index1</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">isub</span>(<span class="ident">c_thirty_one</span>, <span class="ident">index2</span>)),
+        ],
+    );
+
+    <span class="kw">let</span> <span class="ident">imm64_64</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">64</span>);
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">ctz</span>.<span class="ident">I64</span>(<span class="ident">x</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c_sixty_four</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">imm64_64</span>)),
+            <span class="macro">def</span><span class="macro">!</span>((<span class="ident">index1</span>, <span class="ident">r2flags</span>) <span class="op">=</span> <span class="ident">x86_bsf</span>(<span class="ident">x</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">selectif</span>(<span class="ident">intcc_eq</span>, <span class="ident">r2flags</span>, <span class="ident">c_sixty_four</span>, <span class="ident">index1</span>)),
+        ],
+    );
+
+    <span class="kw">let</span> <span class="ident">imm64_32</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">32</span>);
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">ctz</span>.<span class="ident">I32</span>(<span class="ident">x</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c_thirty_two</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">imm64_32</span>)),
+            <span class="macro">def</span><span class="macro">!</span>((<span class="ident">index1</span>, <span class="ident">r2flags</span>) <span class="op">=</span> <span class="ident">x86_bsf</span>(<span class="ident">x</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">selectif</span>(<span class="ident">intcc_eq</span>, <span class="ident">r2flags</span>, <span class="ident">c_thirty_two</span>, <span class="ident">index1</span>)),
+        ],
+    );
+
+    <span class="comment">// Population count for baseline x86_64</span>
+    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;x&quot;</span>);
+    <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;r&quot;</span>);
+
+    <span class="kw">let</span> <span class="ident">qv3</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv3&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv4</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv4&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv5</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv5&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv6</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv6&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv7</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv7&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv8</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv8&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv9</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv9&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv10</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv10&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv11</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv11&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv12</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv12&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv13</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv13&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv14</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv14&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qv15</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qv15&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qc77</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qc77&quot;</span>);
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">non_snake_case</span>)]</span>
+    <span class="kw">let</span> <span class="ident">qc0F</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qc0F&quot;</span>);
+    <span class="kw">let</span> <span class="ident">qc01</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;qc01&quot;</span>);
+
+    <span class="kw">let</span> <span class="ident">imm64_1</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">1</span>);
+    <span class="kw">let</span> <span class="ident">imm64_4</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">4</span>);
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">r</span> <span class="op">=</span> <span class="ident">popcnt</span>.<span class="ident">I64</span>(<span class="ident">x</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv3</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">x</span>, <span class="ident">imm64_1</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qc77</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">0x7777_7777_7777_7777</span>))),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv4</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">qv3</span>, <span class="ident">qc77</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv5</span> <span class="op">=</span> <span class="ident">isub</span>(<span class="ident">x</span>, <span class="ident">qv4</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv6</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">qv4</span>, <span class="ident">imm64_1</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv7</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">qv6</span>, <span class="ident">qc77</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv8</span> <span class="op">=</span> <span class="ident">isub</span>(<span class="ident">qv5</span>, <span class="ident">qv7</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv9</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">qv7</span>, <span class="ident">imm64_1</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv10</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">qv9</span>, <span class="ident">qc77</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv11</span> <span class="op">=</span> <span class="ident">isub</span>(<span class="ident">qv8</span>, <span class="ident">qv10</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv12</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">qv11</span>, <span class="ident">imm64_4</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv13</span> <span class="op">=</span> <span class="ident">iadd</span>(<span class="ident">qv11</span>, <span class="ident">qv12</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qc0F</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">0x0F0F_0F0F_0F0F_0F0F</span>))),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv14</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">qv13</span>, <span class="ident">qc0F</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qc01</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">0x0101_0101_0101_0101</span>))),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">qv15</span> <span class="op">=</span> <span class="ident">imul</span>(<span class="ident">qv14</span>, <span class="ident">qc01</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">r</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">qv15</span>, <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">56</span>))),
+        ],
+    );
+
+    <span class="kw">let</span> <span class="ident">lv3</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv3&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv4</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv4&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv5</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv5&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv6</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv6&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv7</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv7&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv8</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv8&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv9</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv9&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv10</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv10&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv11</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv11&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv12</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv12&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv13</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv13&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv14</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv14&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lv15</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lv15&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lc77</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lc77&quot;</span>);
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">non_snake_case</span>)]</span>
+    <span class="kw">let</span> <span class="ident">lc0F</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lc0F&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lc01</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;lc01&quot;</span>);
+
+    <span class="ident">group</span>.<span class="ident">legalize</span>(
+        <span class="macro">def</span><span class="macro">!</span>(<span class="ident">r</span> <span class="op">=</span> <span class="ident">popcnt</span>.<span class="ident">I32</span>(<span class="ident">x</span>)),
+        <span class="macro">vec</span><span class="macro">!</span>[
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv3</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">x</span>, <span class="ident">imm64_1</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lc77</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">0x7777_7777</span>))),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv4</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">lv3</span>, <span class="ident">lc77</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv5</span> <span class="op">=</span> <span class="ident">isub</span>(<span class="ident">x</span>, <span class="ident">lv4</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv6</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">lv4</span>, <span class="ident">imm64_1</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv7</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">lv6</span>, <span class="ident">lc77</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv8</span> <span class="op">=</span> <span class="ident">isub</span>(<span class="ident">lv5</span>, <span class="ident">lv7</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv9</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">lv7</span>, <span class="ident">imm64_1</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv10</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">lv9</span>, <span class="ident">lc77</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv11</span> <span class="op">=</span> <span class="ident">isub</span>(<span class="ident">lv8</span>, <span class="ident">lv10</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv12</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">lv11</span>, <span class="ident">imm64_4</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv13</span> <span class="op">=</span> <span class="ident">iadd</span>(<span class="ident">lv11</span>, <span class="ident">lv12</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lc0F</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">0x0F0F_0F0F</span>))),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv14</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">lv13</span>, <span class="ident">lc0F</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lc01</span> <span class="op">=</span> <span class="ident">iconst</span>(<span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">0x0101_0101</span>))),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">lv15</span> <span class="op">=</span> <span class="ident">imul</span>(<span class="ident">lv14</span>, <span class="ident">lc01</span>)),
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">r</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">lv15</span>, <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">imm64</span>, <span class="number">24</span>))),
+        ],
+    );
+
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">ineg</span>, <span class="string">&quot;convert_ineg&quot;</span>);
+
+    <span class="ident">group</span>.<span class="ident">custom_legalize</span>(<span class="ident">tls_value</span>, <span class="string">&quot;expand_tls_value&quot;</span>);
+
+    <span class="ident">group</span>.<span class="ident">build_and_add_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">shared</span>.<span class="ident">transform_groups</span>);
+
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">widen</span> <span class="op">=</span> <span class="ident">TransformGroupBuilder</span>::<span class="ident">new</span>(
+        <span class="string">&quot;x86_widen&quot;</span>,
+        <span class="string">r#&quot;
+    Legalize instructions by widening.
+
+    Use x86-specific instructions if needed.&quot;#</span>,
+    )
+    .<span class="ident">isa</span>(<span class="string">&quot;x86&quot;</span>)
+    .<span class="ident">chain_with</span>(<span class="ident">shared</span>.<span class="ident">transform_groups</span>.<span class="ident">by_name</span>(<span class="string">&quot;widen&quot;</span>).<span class="ident">id</span>);
+
+    <span class="ident">widen</span>.<span class="ident">custom_legalize</span>(<span class="ident">ineg</span>, <span class="string">&quot;convert_ineg&quot;</span>);
+    <span class="ident">widen</span>.<span class="ident">build_and_add_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">shared</span>.<span class="ident">transform_groups</span>);
+
+    <span class="comment">// To reduce compilation times, separate out large blocks of legalizations by</span>
+    <span class="comment">// theme.</span>
+    <span class="ident">define_simd</span>(<span class="ident">shared</span>, <span class="ident">x86_instructions</span>);
+}
+
+<span class="kw">fn</span> <span class="ident">define_simd</span>(<span class="ident">shared</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SharedDefinitions</span>, <span class="ident">x86_instructions</span>: <span class="kw-2">&amp;</span><span class="ident">InstructionGroup</span>) {
+    <span class="kw">let</span> <span class="ident">insts</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">shared</span>.<span class="ident">instructions</span>;
+    <span class="kw">let</span> <span class="ident">band</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;band&quot;</span>);
+    <span class="kw">let</span> <span class="ident">band_not</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;band_not&quot;</span>);
+    <span class="kw">let</span> <span class="ident">bitcast</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;bitcast&quot;</span>);
+    <span class="kw">let</span> <span class="ident">bitselect</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;bitselect&quot;</span>);
+    <span class="kw">let</span> <span class="ident">bor</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;bor&quot;</span>);
+    <span class="kw">let</span> <span class="ident">bnot</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;bnot&quot;</span>);
+    <span class="kw">let</span> <span class="ident">bxor</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;bxor&quot;</span>);
+    <span class="kw">let</span> <span class="ident">extractlane</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;extractlane&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fcmp</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fcmp&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fabs</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fabs&quot;</span>);
+    <span class="kw">let</span> <span class="ident">fneg</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;fneg&quot;</span>);
+    <span class="kw">let</span> <span class="ident">icmp</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;icmp&quot;</span>);
+    <span class="kw">let</span> <span class="ident">imax</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;imax&quot;</span>);
+    <span class="kw">let</span> <span class="ident">imin</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;imin&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ineg</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;ineg&quot;</span>);
+    <span class="kw">let</span> <span class="ident">insertlane</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;insertlane&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ishl</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;ishl&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ishl_imm</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;ishl_imm&quot;</span>);
+    <span class="kw">let</span> <span class="ident">raw_bitcast</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;raw_bitcast&quot;</span>);
+    <span class="kw">let</span> <span class="ident">scalar_to_vector</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;scalar_to_vector&quot;</span>);
+    <span class="kw">let</span> <span class="ident">splat</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;splat&quot;</span>);
+    <span class="kw">let</span> <span class="ident">shuffle</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;shuffle&quot;</span>);
+    <span class="kw">let</span> <span class="ident">sshr</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;sshr&quot;</span>);
+    <span class="kw">let</span> <span class="ident">swizzle</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;swizzle&quot;</span>);
+    <span class="kw">let</span> <span class="ident">trueif</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;trueif&quot;</span>);
+    <span class="kw">let</span> <span class="ident">uadd_sat</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;uadd_sat&quot;</span>);
+    <span class="kw">let</span> <span class="ident">umax</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;umax&quot;</span>);
+    <span class="kw">let</span> <span class="ident">umin</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;umin&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ushr_imm</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;ushr_imm&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ushr</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;ushr&quot;</span>);
+    <span class="kw">let</span> <span class="ident">vconst</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;vconst&quot;</span>);
+    <span class="kw">let</span> <span class="ident">vall_true</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;vall_true&quot;</span>);
+    <span class="kw">let</span> <span class="ident">vany_true</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">by_name</span>(<span class="string">&quot;vany_true&quot;</span>);
+
+    <span class="kw">let</span> <span class="ident">x86_pmaxs</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_pmaxs&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_pmaxu</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_pmaxu&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_pmins</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_pmins&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_pminu</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_pminu&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_pshufb</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_pshufb&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_pshufd</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_pshufd&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_psll</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_psll&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_psra</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_psra&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_psrl</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_psrl&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x86_ptest</span> <span class="op">=</span> <span class="ident">x86_instructions</span>.<span class="ident">by_name</span>(<span class="string">&quot;x86_ptest&quot;</span>);
+
+    <span class="kw">let</span> <span class="ident">imm</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">shared</span>.<span class="ident">imm</span>;
+
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">narrow</span> <span class="op">=</span> <span class="ident">TransformGroupBuilder</span>::<span class="ident">new</span>(
+        <span class="string">&quot;x86_narrow&quot;</span>,
+        <span class="string">r#&quot;
+    Legalize instructions by narrowing.
+
+    Use x86-specific instructions if needed.&quot;#</span>,
+    )
+    .<span class="ident">isa</span>(<span class="string">&quot;x86&quot;</span>)
+    .<span class="ident">chain_with</span>(<span class="ident">shared</span>.<span class="ident">transform_groups</span>.<span class="ident">by_name</span>(<span class="string">&quot;narrow_flags&quot;</span>).<span class="ident">id</span>);
+
+    <span class="comment">// Set up variables and immediates.</span>
+    <span class="kw">let</span> <span class="ident">uimm8_zero</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">uimm8</span>, <span class="number">0x00</span>);
+    <span class="kw">let</span> <span class="ident">uimm8_one</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">uimm8</span>, <span class="number">0x01</span>);
+    <span class="kw">let</span> <span class="ident">u128_zeroes</span> <span class="op">=</span> <span class="ident">constant</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="number">0x00</span>; <span class="number">16</span>]);
+    <span class="kw">let</span> <span class="ident">u128_ones</span> <span class="op">=</span> <span class="ident">constant</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="number">0xff</span>; <span class="number">16</span>]);
+    <span class="kw">let</span> <span class="ident">u128_seventies</span> <span class="op">=</span> <span class="ident">constant</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="number">0x70</span>; <span class="number">16</span>]);
+    <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;a&quot;</span>);
+    <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;b&quot;</span>);
+    <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;c&quot;</span>);
+    <span class="kw">let</span> <span class="ident">d</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;d&quot;</span>);
+    <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;e&quot;</span>);
+    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;x&quot;</span>);
+    <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">var</span>(<span class="string">&quot;y&quot;</span>);
+
+    <span class="comment">// Limit the SIMD vector size: eventually multiple vector sizes may be supported</span>
+    <span class="comment">// but for now only SSE-sized vectors are available.</span>
+    <span class="kw">let</span> <span class="ident">sse_vector_size</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">128</span>;
+    <span class="kw">let</span> <span class="ident">allowed_simd_type</span> <span class="op">=</span> <span class="op">|</span><span class="ident">t</span>: <span class="kw-2">&amp;</span><span class="ident">LaneType</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">lane_bits</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="number">8</span> <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="ident">t</span>.<span class="ident">lane_bits</span>() <span class="op">&lt;</span> <span class="number">128</span>;
+
+    <span class="comment">// SIMD splat: 8-bits</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="ident">ValueType</span>::<span class="ident">all_lane_types</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">lane_bits</span>() <span class="op">=</span><span class="op">=</span> <span class="number">8</span>) {
+        <span class="kw">let</span> <span class="ident">splat_any8x16</span> <span class="op">=</span> <span class="ident">splat</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">splat_any8x16</span>(<span class="ident">x</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="comment">// Move into the lowest 8 bits of an XMM register.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">scalar_to_vector</span>(<span class="ident">x</span>)),
+                <span class="comment">// Zero out a different XMM register; the shuffle mask for moving the lowest byte</span>
+                <span class="comment">// to all other byte lanes is 0x0.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">vconst</span>(<span class="ident">u128_zeroes</span>)),
+                <span class="comment">// PSHUFB takes two XMM operands, one of which is a shuffle mask (i.e. b).</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">x86_pshufb</span>(<span class="ident">a</span>, <span class="ident">b</span>)),
+            ],
+        );
+    }
+
+    <span class="comment">// SIMD splat: 16-bits</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="ident">ValueType</span>::<span class="ident">all_lane_types</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">lane_bits</span>() <span class="op">=</span><span class="op">=</span> <span class="number">16</span>) {
+        <span class="kw">let</span> <span class="ident">splat_x16x8</span> <span class="op">=</span> <span class="ident">splat</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">let</span> <span class="ident">raw_bitcast_any16x8_to_i32x4</span> <span class="op">=</span> <span class="ident">raw_bitcast</span>
+            .<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">I32</span>, <span class="ident">sse_vector_size</span>))
+            .<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">let</span> <span class="ident">raw_bitcast_i32x4_to_any16x8</span> <span class="op">=</span> <span class="ident">raw_bitcast</span>
+            .<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>))
+            .<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">I32</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">splat_x16x8</span>(<span class="ident">x</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="comment">// Move into the lowest 16 bits of an XMM register.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">scalar_to_vector</span>(<span class="ident">x</span>)),
+                <span class="comment">// Insert the value again but in the next lowest 16 bits.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">insertlane</span>(<span class="ident">a</span>, <span class="ident">uimm8_one</span>, <span class="ident">x</span>)),
+                <span class="comment">// No instruction emitted; pretend this is an I32x4 so we can use PSHUFD.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">raw_bitcast_any16x8_to_i32x4</span>(<span class="ident">b</span>)),
+                <span class="comment">// Broadcast the bytes in the XMM register with PSHUFD.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">d</span> <span class="op">=</span> <span class="ident">x86_pshufd</span>(<span class="ident">c</span>, <span class="ident">uimm8_zero</span>)),
+                <span class="comment">// No instruction emitted; pretend this is an X16x8 again.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">raw_bitcast_i32x4_to_any16x8</span>(<span class="ident">d</span>)),
+            ],
+        );
+    }
+
+    <span class="comment">// SIMD splat: 32-bits</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="ident">ValueType</span>::<span class="ident">all_lane_types</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">lane_bits</span>() <span class="op">=</span><span class="op">=</span> <span class="number">32</span>) {
+        <span class="kw">let</span> <span class="ident">splat_any32x4</span> <span class="op">=</span> <span class="ident">splat</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">splat_any32x4</span>(<span class="ident">x</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="comment">// Translate to an x86 MOV to get the value in an XMM register.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">scalar_to_vector</span>(<span class="ident">x</span>)),
+                <span class="comment">// Broadcast the bytes in the XMM register with PSHUFD.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">x86_pshufd</span>(<span class="ident">a</span>, <span class="ident">uimm8_zero</span>)),
+            ],
+        );
+    }
+
+    <span class="comment">// SIMD splat: 64-bits</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="ident">ValueType</span>::<span class="ident">all_lane_types</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">lane_bits</span>() <span class="op">=</span><span class="op">=</span> <span class="number">64</span>) {
+        <span class="kw">let</span> <span class="ident">splat_any64x2</span> <span class="op">=</span> <span class="ident">splat</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">splat_any64x2</span>(<span class="ident">x</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="comment">// Move into the lowest 64 bits of an XMM register.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">scalar_to_vector</span>(<span class="ident">x</span>)),
+                <span class="comment">// Move into the highest 64 bits of the same XMM register.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">insertlane</span>(<span class="ident">a</span>, <span class="ident">uimm8_one</span>, <span class="ident">x</span>)),
+            ],
+        );
+    }
+
+    <span class="comment">// SIMD swizzle; the following inefficient implementation is due to the Wasm SIMD spec requiring</span>
+    <span class="comment">// mask indexes greater than 15 to have the same semantics as a 0 index. For the spec discussion,</span>
+    <span class="comment">// see https://github.com/WebAssembly/simd/issues/93.</span>
+    {
+        <span class="kw">let</span> <span class="ident">swizzle</span> <span class="op">=</span> <span class="ident">swizzle</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">I8</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">swizzle</span>(<span class="ident">x</span>, <span class="ident">y</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">vconst</span>(<span class="ident">u128_seventies</span>)),
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">uadd_sat</span>(<span class="ident">y</span>, <span class="ident">b</span>)),
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">x86_pshufb</span>(<span class="ident">x</span>, <span class="ident">c</span>)),
+            ],
+        );
+    }
+
+    <span class="comment">// SIMD bnot</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="ident">ValueType</span>::<span class="ident">all_lane_types</span>().<span class="ident">filter</span>(<span class="ident">allowed_simd_type</span>) {
+        <span class="kw">let</span> <span class="ident">bnot</span> <span class="op">=</span> <span class="ident">bnot</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">bnot</span>(<span class="ident">x</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">vconst</span>(<span class="ident">u128_ones</span>)), <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">bxor</span>(<span class="ident">a</span>, <span class="ident">x</span>))],
+        );
+    }
+
+    <span class="comment">// SIMD shift left (logical)</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">I16</span>, <span class="ident">I32</span>, <span class="ident">I64</span>] {
+        <span class="kw">let</span> <span class="ident">ishl</span> <span class="op">=</span> <span class="ident">ishl</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">let</span> <span class="ident">bitcast</span> <span class="op">=</span> <span class="ident">bitcast</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">I64</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">ishl</span>(<span class="ident">x</span>, <span class="ident">y</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">bitcast</span>(<span class="ident">y</span>)), <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">x86_psll</span>(<span class="ident">x</span>, <span class="ident">b</span>))],
+        );
+    }
+
+    <span class="comment">// SIMD shift right (logical)</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">I16</span>, <span class="ident">I32</span>, <span class="ident">I64</span>] {
+        <span class="kw">let</span> <span class="ident">ushr</span> <span class="op">=</span> <span class="ident">ushr</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">let</span> <span class="ident">bitcast</span> <span class="op">=</span> <span class="ident">bitcast</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">I64</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">ushr</span>(<span class="ident">x</span>, <span class="ident">y</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">bitcast</span>(<span class="ident">y</span>)), <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">x86_psrl</span>(<span class="ident">x</span>, <span class="ident">b</span>))],
+        );
+    }
+
+    <span class="comment">// SIMD shift left (arithmetic)</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">I16</span>, <span class="ident">I32</span>, <span class="ident">I64</span>] {
+        <span class="kw">let</span> <span class="ident">sshr</span> <span class="op">=</span> <span class="ident">sshr</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">let</span> <span class="ident">bitcast</span> <span class="op">=</span> <span class="ident">bitcast</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">I64</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">sshr</span>(<span class="ident">x</span>, <span class="ident">y</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">bitcast</span>(<span class="ident">y</span>)), <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">x86_psra</span>(<span class="ident">x</span>, <span class="ident">b</span>))],
+        );
+    }
+
+    <span class="comment">// SIMD select</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="ident">ValueType</span>::<span class="ident">all_lane_types</span>().<span class="ident">filter</span>(<span class="ident">allowed_simd_type</span>) {
+        <span class="kw">let</span> <span class="ident">bitselect</span> <span class="op">=</span> <span class="ident">bitselect</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>)); <span class="comment">// must bind both x/y and c</span>
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">d</span> <span class="op">=</span> <span class="ident">bitselect</span>(<span class="ident">c</span>, <span class="ident">x</span>, <span class="ident">y</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">x</span>, <span class="ident">c</span>)),
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">band_not</span>(<span class="ident">y</span>, <span class="ident">c</span>)),
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">d</span> <span class="op">=</span> <span class="ident">bor</span>(<span class="ident">a</span>, <span class="ident">b</span>)),
+            ],
+        );
+    }
+
+    <span class="comment">// SIMD vany_true</span>
+    <span class="kw">let</span> <span class="ident">ne</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;ne&quot;</span>);
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="ident">ValueType</span>::<span class="ident">all_lane_types</span>().<span class="ident">filter</span>(<span class="ident">allowed_simd_type</span>) {
+        <span class="kw">let</span> <span class="ident">vany_true</span> <span class="op">=</span> <span class="ident">vany_true</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">vany_true</span>(<span class="ident">x</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">x86_ptest</span>(<span class="ident">x</span>, <span class="ident">x</span>)), <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">trueif</span>(<span class="ident">ne</span>, <span class="ident">a</span>))],
+        );
+    }
+
+    <span class="comment">// SIMD vall_true</span>
+    <span class="kw">let</span> <span class="ident">eq</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;eq&quot;</span>);
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="ident">ValueType</span>::<span class="ident">all_lane_types</span>().<span class="ident">filter</span>(<span class="ident">allowed_simd_type</span>) {
+        <span class="kw">let</span> <span class="ident">vall_true</span> <span class="op">=</span> <span class="ident">vall_true</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">if</span> <span class="ident">ty</span>.<span class="ident">is_int</span>() {
+            <span class="comment">// In the common case (Wasm&#39;s integer-only all_true), we do not require a</span>
+            <span class="comment">// bitcast.</span>
+            <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">vall_true</span>(<span class="ident">x</span>)),
+                <span class="macro">vec</span><span class="macro">!</span>[
+                    <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">vconst</span>(<span class="ident">u128_zeroes</span>)),
+                    <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">eq</span>, <span class="ident">x</span>, <span class="ident">a</span>)),
+                    <span class="macro">def</span><span class="macro">!</span>(<span class="ident">d</span> <span class="op">=</span> <span class="ident">x86_ptest</span>(<span class="ident">c</span>, <span class="ident">c</span>)),
+                    <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">trueif</span>(<span class="ident">eq</span>, <span class="ident">d</span>)),
+                ],
+            );
+        } <span class="kw">else</span> {
+            <span class="comment">// However, to support other types we must bitcast them to an integer vector to</span>
+            <span class="comment">// use icmp.</span>
+            <span class="kw">let</span> <span class="ident">lane_type_as_int</span> <span class="op">=</span> <span class="ident">LaneType</span>::<span class="ident">int_from_bits</span>(<span class="ident">ty</span>.<span class="ident">lane_bits</span>() <span class="kw">as</span> <span class="ident">u16</span>);
+            <span class="kw">let</span> <span class="ident">raw_bitcast_to_int</span> <span class="op">=</span> <span class="ident">raw_bitcast</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">lane_type_as_int</span>, <span class="ident">sse_vector_size</span>));
+            <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">vall_true</span>(<span class="ident">x</span>)),
+                <span class="macro">vec</span><span class="macro">!</span>[
+                    <span class="macro">def</span><span class="macro">!</span>(<span class="ident">a</span> <span class="op">=</span> <span class="ident">vconst</span>(<span class="ident">u128_zeroes</span>)),
+                    <span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">raw_bitcast_to_int</span>(<span class="ident">x</span>)),
+                    <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">eq</span>, <span class="ident">b</span>, <span class="ident">a</span>)),
+                    <span class="macro">def</span><span class="macro">!</span>(<span class="ident">d</span> <span class="op">=</span> <span class="ident">x86_ptest</span>(<span class="ident">c</span>, <span class="ident">c</span>)),
+                    <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">trueif</span>(<span class="ident">eq</span>, <span class="ident">d</span>)),
+                ],
+            );
+        }
+    }
+
+    <span class="comment">// SIMD icmp ne</span>
+    <span class="kw">let</span> <span class="ident">ne</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;ne&quot;</span>);
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="ident">ValueType</span>::<span class="ident">all_lane_types</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">ty</span><span class="op">|</span> <span class="ident">allowed_simd_type</span>(<span class="ident">ty</span>) <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="ident">ty</span>.<span class="ident">is_int</span>()) {
+        <span class="kw">let</span> <span class="ident">icmp_</span> <span class="op">=</span> <span class="ident">icmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp_</span>(<span class="ident">ne</span>, <span class="ident">a</span>, <span class="ident">b</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">x</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">eq</span>, <span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">bnot</span>(<span class="ident">x</span>))],
+        );
+    }
+
+    <span class="comment">// SIMD icmp greater-/less-than</span>
+    <span class="kw">let</span> <span class="ident">sgt</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;sgt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ugt</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;ugt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">sge</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;sge&quot;</span>);
+    <span class="kw">let</span> <span class="ident">uge</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;uge&quot;</span>);
+    <span class="kw">let</span> <span class="ident">slt</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;slt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ult</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;ult&quot;</span>);
+    <span class="kw">let</span> <span class="ident">sle</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;sle&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ule</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">intcc</span>, <span class="string">&quot;ule&quot;</span>);
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">I8</span>, <span class="ident">I16</span>, <span class="ident">I32</span>] {
+        <span class="comment">// greater-than</span>
+        <span class="kw">let</span> <span class="ident">icmp_</span> <span class="op">=</span> <span class="ident">icmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp_</span>(<span class="ident">ugt</span>, <span class="ident">a</span>, <span class="ident">b</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">x</span> <span class="op">=</span> <span class="ident">x86_pmaxu</span>(<span class="ident">a</span>, <span class="ident">b</span>)),
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">y</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">eq</span>, <span class="ident">x</span>, <span class="ident">b</span>)),
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">bnot</span>(<span class="ident">y</span>)),
+            ],
+        );
+        <span class="kw">let</span> <span class="ident">icmp_</span> <span class="op">=</span> <span class="ident">icmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp_</span>(<span class="ident">sge</span>, <span class="ident">a</span>, <span class="ident">b</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">x</span> <span class="op">=</span> <span class="ident">x86_pmins</span>(<span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">eq</span>, <span class="ident">x</span>, <span class="ident">b</span>))],
+        );
+        <span class="kw">let</span> <span class="ident">icmp_</span> <span class="op">=</span> <span class="ident">icmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp_</span>(<span class="ident">uge</span>, <span class="ident">a</span>, <span class="ident">b</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">x</span> <span class="op">=</span> <span class="ident">x86_pminu</span>(<span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">eq</span>, <span class="ident">x</span>, <span class="ident">b</span>))],
+        );
+
+        <span class="comment">// less-than</span>
+        <span class="kw">let</span> <span class="ident">icmp_</span> <span class="op">=</span> <span class="ident">icmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp_</span>(<span class="ident">slt</span>, <span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">sgt</span>, <span class="ident">b</span>, <span class="ident">a</span>))]);
+        <span class="kw">let</span> <span class="ident">icmp_</span> <span class="op">=</span> <span class="ident">icmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp_</span>(<span class="ident">ult</span>, <span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">ugt</span>, <span class="ident">b</span>, <span class="ident">a</span>))]);
+        <span class="kw">let</span> <span class="ident">icmp_</span> <span class="op">=</span> <span class="ident">icmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp_</span>(<span class="ident">sle</span>, <span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">sge</span>, <span class="ident">b</span>, <span class="ident">a</span>))]);
+        <span class="kw">let</span> <span class="ident">icmp_</span> <span class="op">=</span> <span class="ident">icmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp_</span>(<span class="ident">ule</span>, <span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">icmp</span>(<span class="ident">uge</span>, <span class="ident">b</span>, <span class="ident">a</span>))]);
+    }
+
+    <span class="comment">// SIMD integer min/max</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">I8</span>, <span class="ident">I16</span>, <span class="ident">I32</span>] {
+        <span class="kw">let</span> <span class="ident">imin</span> <span class="op">=</span> <span class="ident">imin</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">imin</span>(<span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">x86_pmins</span>(<span class="ident">a</span>, <span class="ident">b</span>))]);
+        <span class="kw">let</span> <span class="ident">umin</span> <span class="op">=</span> <span class="ident">umin</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">umin</span>(<span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">x86_pminu</span>(<span class="ident">a</span>, <span class="ident">b</span>))]);
+        <span class="kw">let</span> <span class="ident">imax</span> <span class="op">=</span> <span class="ident">imax</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">imax</span>(<span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">x86_pmaxs</span>(<span class="ident">a</span>, <span class="ident">b</span>))]);
+        <span class="kw">let</span> <span class="ident">umax</span> <span class="op">=</span> <span class="ident">umax</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">umax</span>(<span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">x86_pmaxu</span>(<span class="ident">a</span>, <span class="ident">b</span>))]);
+    }
+
+    <span class="comment">// SIMD fcmp greater-/less-than</span>
+    <span class="kw">let</span> <span class="ident">gt</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;gt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">lt</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;lt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ge</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ge&quot;</span>);
+    <span class="kw">let</span> <span class="ident">le</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;le&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ugt</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ugt&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ult</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ult&quot;</span>);
+    <span class="kw">let</span> <span class="ident">uge</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;uge&quot;</span>);
+    <span class="kw">let</span> <span class="ident">ule</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">enumerator_for</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">floatcc</span>, <span class="string">&quot;ule&quot;</span>);
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">F32</span>, <span class="ident">F64</span>] {
+        <span class="kw">let</span> <span class="ident">fcmp_</span> <span class="op">=</span> <span class="ident">fcmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">fcmp_</span>(<span class="ident">gt</span>, <span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">lt</span>, <span class="ident">b</span>, <span class="ident">a</span>))]);
+        <span class="kw">let</span> <span class="ident">fcmp_</span> <span class="op">=</span> <span class="ident">fcmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">fcmp_</span>(<span class="ident">ge</span>, <span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">le</span>, <span class="ident">b</span>, <span class="ident">a</span>))]);
+        <span class="kw">let</span> <span class="ident">fcmp_</span> <span class="op">=</span> <span class="ident">fcmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">fcmp_</span>(<span class="ident">ult</span>, <span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">ugt</span>, <span class="ident">b</span>, <span class="ident">a</span>))]);
+        <span class="kw">let</span> <span class="ident">fcmp_</span> <span class="op">=</span> <span class="ident">fcmp</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">fcmp_</span>(<span class="ident">ule</span>, <span class="ident">a</span>, <span class="ident">b</span>)), <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">fcmp</span>(<span class="ident">uge</span>, <span class="ident">b</span>, <span class="ident">a</span>))]);
+    }
+
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">F32</span>, <span class="ident">F64</span>] {
+        <span class="kw">let</span> <span class="ident">fneg</span> <span class="op">=</span> <span class="ident">fneg</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">let</span> <span class="ident">lane_type_as_int</span> <span class="op">=</span> <span class="ident">LaneType</span>::<span class="ident">int_from_bits</span>(<span class="ident">LaneType</span>::<span class="ident">from</span>(<span class="kw-2">*</span><span class="ident">ty</span>).<span class="ident">lane_bits</span>() <span class="kw">as</span> <span class="ident">u16</span>);
+        <span class="kw">let</span> <span class="ident">uimm8_shift</span> <span class="op">=</span> <span class="ident">Literal</span>::<span class="ident">constant</span>(<span class="kw-2">&amp;</span><span class="ident">imm</span>.<span class="ident">uimm8</span>, <span class="ident">lane_type_as_int</span>.<span class="ident">lane_bits</span>() <span class="kw">as</span> <span class="ident">i64</span> <span class="op">-</span> <span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">vconst</span> <span class="op">=</span> <span class="ident">vconst</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">lane_type_as_int</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">let</span> <span class="ident">bitcast_to_float</span> <span class="op">=</span> <span class="ident">raw_bitcast</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">fneg</span>(<span class="ident">a</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">vconst</span>(<span class="ident">u128_ones</span>)),
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">d</span> <span class="op">=</span> <span class="ident">ishl_imm</span>(<span class="ident">c</span>, <span class="ident">uimm8_shift</span>)), <span class="comment">// Create a mask of all 0s except the MSB.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">e</span> <span class="op">=</span> <span class="ident">bitcast_to_float</span>(<span class="ident">d</span>)),      <span class="comment">// Cast mask to the floating-point type.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">bxor</span>(<span class="ident">a</span>, <span class="ident">e</span>)),               <span class="comment">// Flip the MSB.</span>
+            ],
+        );
+    }
+
+    <span class="comment">// SIMD fabs</span>
+    <span class="kw">for</span> <span class="ident">ty</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">F32</span>, <span class="ident">F64</span>] {
+        <span class="kw">let</span> <span class="ident">fabs</span> <span class="op">=</span> <span class="ident">fabs</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">let</span> <span class="ident">lane_type_as_int</span> <span class="op">=</span> <span class="ident">LaneType</span>::<span class="ident">int_from_bits</span>(<span class="ident">LaneType</span>::<span class="ident">from</span>(<span class="kw-2">*</span><span class="ident">ty</span>).<span class="ident">lane_bits</span>() <span class="kw">as</span> <span class="ident">u16</span>);
+        <span class="kw">let</span> <span class="ident">vconst</span> <span class="op">=</span> <span class="ident">vconst</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="ident">lane_type_as_int</span>, <span class="ident">sse_vector_size</span>));
+        <span class="kw">let</span> <span class="ident">bitcast_to_float</span> <span class="op">=</span> <span class="ident">raw_bitcast</span>.<span class="ident">bind</span>(<span class="ident">vector</span>(<span class="kw-2">*</span><span class="ident">ty</span>, <span class="ident">sse_vector_size</span>));
+        <span class="ident">narrow</span>.<span class="ident">legalize</span>(
+            <span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">fabs</span>(<span class="ident">a</span>)),
+            <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">c</span> <span class="op">=</span> <span class="ident">vconst</span>(<span class="ident">u128_ones</span>)),
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">d</span> <span class="op">=</span> <span class="ident">ushr_imm</span>(<span class="ident">c</span>, <span class="ident">uimm8_one</span>)), <span class="comment">// Create a mask of all 1s except the MSB.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">e</span> <span class="op">=</span> <span class="ident">bitcast_to_float</span>(<span class="ident">d</span>)),    <span class="comment">// Cast mask to the floating-point type.</span>
+                <span class="macro">def</span><span class="macro">!</span>(<span class="ident">b</span> <span class="op">=</span> <span class="ident">band</span>(<span class="ident">a</span>, <span class="ident">e</span>)),             <span class="comment">// Unset the MSB.</span>
+            ],
+        );
+    }
+
+    <span class="ident">narrow</span>.<span class="ident">custom_legalize</span>(<span class="ident">shuffle</span>, <span class="string">&quot;convert_shuffle&quot;</span>);
+    <span class="ident">narrow</span>.<span class="ident">custom_legalize</span>(<span class="ident">extractlane</span>, <span class="string">&quot;convert_extractlane&quot;</span>);
+    <span class="ident">narrow</span>.<span class="ident">custom_legalize</span>(<span class="ident">insertlane</span>, <span class="string">&quot;convert_insertlane&quot;</span>);
+    <span class="ident">narrow</span>.<span class="ident">custom_legalize</span>(<span class="ident">ineg</span>, <span class="string">&quot;convert_ineg&quot;</span>);
+
+    <span class="ident">narrow</span>.<span class="ident">build_and_add_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">shared</span>.<span class="ident">transform_groups</span>);
+}
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../../";window.currentCrate = "cranelift_codegen_meta";</script><script src="../../../../aliases.js"></script><script src="../../../../main.js"></script><script src="../../../../source-script.js"></script><script src="../../../../source-files.js"></script><script defer src="../../../../search-index.js"></script></body></html>

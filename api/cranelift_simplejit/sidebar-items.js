@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["VERSION","Version number of this crate."]],"struct":[["SimpleJITBackend","A `SimpleJITBackend` implements `Backend` and emits code and data into memory where it can be directly called and accessed."],["SimpleJITBuilder","A builder for `SimpleJITBackend`."]]});

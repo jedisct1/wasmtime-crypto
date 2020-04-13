@@ -1,0 +1,210 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Stability - Wasmtime</title>
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body class="light">
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            document.body.className = theme;
+            document.querySelector('html').className = theme + ' js';
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><a href="tutorial.html"><strong aria-hidden="true">2.</strong> Tutorial</a></li><li><ol class="section"><li><a href="tutorial-create-hello-world.html"><strong aria-hidden="true">2.1.</strong> Creating hello-world.wasm</a></li><li><a href="tutorial-run-hello-world.html"><strong aria-hidden="true">2.2.</strong> Running hello-world.wasm</a></li></ol></li><li><a href="examples.html"><strong aria-hidden="true">3.</strong> Examples</a></li><li><ol class="section"><li><a href="examples-markdown.html"><strong aria-hidden="true">3.1.</strong> Markdown parser</a></li><li><a href="examples-profiling.html"><strong aria-hidden="true">3.2.</strong> Profiling WebAssembly</a></li><li><ol class="section"><li><a href="examples-profiling-perf.html"><strong aria-hidden="true">3.2.1.</strong> Profiling with Perf</a></li><li><a href="examples-profiling-vtune.html"><strong aria-hidden="true">3.2.2.</strong> Profiling with VTune</a></li></ol></li><li><a href="examples-rust-embed.html"><strong aria-hidden="true">3.3.</strong> Embedding in Rust</a></li><li><ol class="section"><li><a href="examples-rust-hello-world.html"><strong aria-hidden="true">3.3.1.</strong> Hello, world!</a></li><li><a href="examples-rust-gcd.html"><strong aria-hidden="true">3.3.2.</strong> Calculating the GCD</a></li><li><a href="examples-rust-memory.html"><strong aria-hidden="true">3.3.3.</strong> Using linear memory</a></li><li><a href="examples-rust-wasi.html"><strong aria-hidden="true">3.3.4.</strong> WASI</a></li><li><a href="examples-rust-linking.html"><strong aria-hidden="true">3.3.5.</strong> Linking modules</a></li><li><a href="examples-rust-debugging.html"><strong aria-hidden="true">3.3.6.</strong> Debugging</a></li><li><a href="examples-rust-multi-value.html"><strong aria-hidden="true">3.3.7.</strong> Using multi-value</a></li></ol></li><li><a href="examples-c-embed.html"><strong aria-hidden="true">3.4.</strong> Embedding in C</a></li><li><ol class="section"><li><a href="examples-c-hello-world.html"><strong aria-hidden="true">3.4.1.</strong> Hello, world!</a></li><li><a href="examples-c-gcd.html"><strong aria-hidden="true">3.4.2.</strong> Calculating the GCD</a></li><li><a href="examples-c-memory.html"><strong aria-hidden="true">3.4.3.</strong> Using linear memory</a></li><li><a href="examples-c-wasi.html"><strong aria-hidden="true">3.4.4.</strong> WASI</a></li><li><a href="examples-c-linking.html"><strong aria-hidden="true">3.4.5.</strong> Linking modules</a></li><li><a href="examples-c-debugging.html"><strong aria-hidden="true">3.4.6.</strong> Debugging</a></li><li><a href="examples-c-multi-value.html"><strong aria-hidden="true">3.4.7.</strong> Using multi-value</a></li></ol></li></ol></li><li><a href="lang.html"><strong aria-hidden="true">4.</strong> Using WebAssembly from your lanugage</a></li><li><ol class="section"><li><a href="lang-rust.html"><strong aria-hidden="true">4.1.</strong> Rust</a></li><li><a href="lang-c.html"><strong aria-hidden="true">4.2.</strong> C</a></li><li><a href="lang-python.html"><strong aria-hidden="true">4.3.</strong> Python</a></li><li><a href="lang-dotnet.html"><strong aria-hidden="true">4.4.</strong> .NET</a></li><li><a href="lang-go.html"><strong aria-hidden="true">4.5.</strong> Go</a></li><li><a href="lang-bash.html"><strong aria-hidden="true">4.6.</strong> Bash</a></li></ol></li><li><a href="cli.html"><strong aria-hidden="true">5.</strong> Using the wasmtime CLI</a></li><li><ol class="section"><li><a href="cli-install.html"><strong aria-hidden="true">5.1.</strong> Installation</a></li><li><a href="cli-options.html"><strong aria-hidden="true">5.2.</strong> CLI Options</a></li><li><a href="cli-cache.html"><strong aria-hidden="true">5.3.</strong> Cache Configuration</a></li></ol></li><li><a href="wasm.html"><strong aria-hidden="true">6.</strong> Writing WebAssembly</a></li><li><ol class="section"><li><a href="wasm-rust.html"><strong aria-hidden="true">6.1.</strong> Rust</a></li><li><a href="wasm-c.html"><strong aria-hidden="true">6.2.</strong> C/C++</a></li><li><a href="wasm-wat.html"><strong aria-hidden="true">6.3.</strong> WebAssembly Text Format (*.wat)</a></li><li><a href="wasm-markdown.html"><strong aria-hidden="true">6.4.</strong> Example: Markdown Parser</a></li></ol></li><li><a href="stability.html" class="active"><strong aria-hidden="true">7.</strong> Stability</a></li><li><ol class="section"><li><a href="stability-release.html"><strong aria-hidden="true">7.1.</strong> Release Process</a></li><li><a href="stability-platform-support.html"><strong aria-hidden="true">7.2.</strong> Platform Support</a></li></ol></li><li><a href="security.html"><strong aria-hidden="true">8.</strong> Security</a></li><li><ol class="section"><li><a href="security-disclosure.html"><strong aria-hidden="true">8.1.</strong> Disclosure Policy</a></li><li><a href="security-sandboxing.html"><strong aria-hidden="true">8.2.</strong> Sandboxing</a></li></ol></li><li><a href="contributing.html"><strong aria-hidden="true">9.</strong> Contributing</a></li><li><ol class="section"><li><a href="contributing-building.html"><strong aria-hidden="true">9.1.</strong> Building</a></li><li><a href="contributing-testing.html"><strong aria-hidden="true">9.2.</strong> Testing</a></li><li><a href="contributing-fuzzing.html"><strong aria-hidden="true">9.3.</strong> Fuzzing</a></li><li><a href="contributing-ci.html"><strong aria-hidden="true">9.4.</strong> CI</a></li><li><a href="contributing-coding-guidelines.html"><strong aria-hidden="true">9.5.</strong> Coding guidelines</a></li><li><a href="contributing-development-process.html"><strong aria-hidden="true">9.6.</strong> Development process</a></li><li><a href="contributing-release-process.html"><strong aria-hidden="true">9.7.</strong> Release Process</a></li><li><a href="contributing-governance.html"><strong aria-hidden="true">9.8.</strong> Governance</a></li><li><a href="contributing-coc.html"><strong aria-hidden="true">9.9.</strong> Code of Conduct</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Wasmtime</h1>
+
+                        <div class="right-buttons">
+                            <a href="print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#stability" id="stability">Stability</a></h1>
+<p>... more coming soon</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="wasm-markdown.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="stability-release.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="wasm-markdown.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a href="stability-release.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["clif_util"] = [{"text":"impl <a class=\"trait\" href=\"cranelift_codegen/binemit/memorysink/trait.StackmapSink.html\" title=\"trait cranelift_codegen::binemit::memorysink::StackmapSink\">StackmapSink</a> for <a class=\"struct\" href=\"clif_util/disasm/struct.PrintStackmaps.html\" title=\"struct clif_util::disasm::PrintStackmaps\">PrintStackmaps</a>","synthetic":false,"types":["clif_util::disasm::PrintStackmaps"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

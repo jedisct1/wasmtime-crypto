@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["define",""]],"mod":[["entities",""],["formats",""],["immediates",""],["instructions",""],["legalize",""],["settings",""],["types","This module predefines all the Cranelift scalar types."]],"struct":[["Definitions",""]]});

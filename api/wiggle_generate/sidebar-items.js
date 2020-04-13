@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["define_datatype",""],["define_func",""],["define_module_trait",""],["generate",""]],"mod":[["config",""]],"struct":[["Names",""]]});

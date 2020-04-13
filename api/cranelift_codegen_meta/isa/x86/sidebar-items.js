@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["define",""]],"mod":[["encodings",""],["instructions",""],["legalize",""],["opcodes","Static, named definitions of instruction opcodes."],["recipes","Encoding recipes for x86/x86_64."],["registers",""],["settings",""]]});

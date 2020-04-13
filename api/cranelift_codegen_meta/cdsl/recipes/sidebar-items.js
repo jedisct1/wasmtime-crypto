@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["OperandConstraint",""]],"struct":[["BranchRange",""],["EncodingRecipe","A recipe for encoding instructions with a given format."],["EncodingRecipeBuilder",""],["EncodingRecipeNumber",""],["Register","A specific register in a register class."],["Stack","An operand that must be in a stack slot."]],"type":[["Recipes",""]]});

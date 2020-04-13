@@ -1,0 +1,344 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Rust - Wasmtime</title>
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body class="light">
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            document.body.className = theme;
+            document.querySelector('html').className = theme + ' js';
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><a href="tutorial.html"><strong aria-hidden="true">2.</strong> Tutorial</a></li><li><ol class="section"><li><a href="tutorial-create-hello-world.html"><strong aria-hidden="true">2.1.</strong> Creating hello-world.wasm</a></li><li><a href="tutorial-run-hello-world.html"><strong aria-hidden="true">2.2.</strong> Running hello-world.wasm</a></li></ol></li><li><a href="examples.html"><strong aria-hidden="true">3.</strong> Examples</a></li><li><ol class="section"><li><a href="examples-markdown.html"><strong aria-hidden="true">3.1.</strong> Markdown parser</a></li><li><a href="examples-profiling.html"><strong aria-hidden="true">3.2.</strong> Profiling WebAssembly</a></li><li><ol class="section"><li><a href="examples-profiling-perf.html"><strong aria-hidden="true">3.2.1.</strong> Profiling with Perf</a></li><li><a href="examples-profiling-vtune.html"><strong aria-hidden="true">3.2.2.</strong> Profiling with VTune</a></li></ol></li><li><a href="examples-rust-embed.html"><strong aria-hidden="true">3.3.</strong> Embedding in Rust</a></li><li><ol class="section"><li><a href="examples-rust-hello-world.html"><strong aria-hidden="true">3.3.1.</strong> Hello, world!</a></li><li><a href="examples-rust-gcd.html"><strong aria-hidden="true">3.3.2.</strong> Calculating the GCD</a></li><li><a href="examples-rust-memory.html"><strong aria-hidden="true">3.3.3.</strong> Using linear memory</a></li><li><a href="examples-rust-wasi.html"><strong aria-hidden="true">3.3.4.</strong> WASI</a></li><li><a href="examples-rust-linking.html"><strong aria-hidden="true">3.3.5.</strong> Linking modules</a></li><li><a href="examples-rust-debugging.html"><strong aria-hidden="true">3.3.6.</strong> Debugging</a></li><li><a href="examples-rust-multi-value.html"><strong aria-hidden="true">3.3.7.</strong> Using multi-value</a></li></ol></li><li><a href="examples-c-embed.html"><strong aria-hidden="true">3.4.</strong> Embedding in C</a></li><li><ol class="section"><li><a href="examples-c-hello-world.html"><strong aria-hidden="true">3.4.1.</strong> Hello, world!</a></li><li><a href="examples-c-gcd.html"><strong aria-hidden="true">3.4.2.</strong> Calculating the GCD</a></li><li><a href="examples-c-memory.html"><strong aria-hidden="true">3.4.3.</strong> Using linear memory</a></li><li><a href="examples-c-wasi.html"><strong aria-hidden="true">3.4.4.</strong> WASI</a></li><li><a href="examples-c-linking.html"><strong aria-hidden="true">3.4.5.</strong> Linking modules</a></li><li><a href="examples-c-debugging.html"><strong aria-hidden="true">3.4.6.</strong> Debugging</a></li><li><a href="examples-c-multi-value.html"><strong aria-hidden="true">3.4.7.</strong> Using multi-value</a></li></ol></li></ol></li><li><a href="lang.html"><strong aria-hidden="true">4.</strong> Using WebAssembly from your lanugage</a></li><li><ol class="section"><li><a href="lang-rust.html" class="active"><strong aria-hidden="true">4.1.</strong> Rust</a></li><li><a href="lang-c.html"><strong aria-hidden="true">4.2.</strong> C</a></li><li><a href="lang-python.html"><strong aria-hidden="true">4.3.</strong> Python</a></li><li><a href="lang-dotnet.html"><strong aria-hidden="true">4.4.</strong> .NET</a></li><li><a href="lang-go.html"><strong aria-hidden="true">4.5.</strong> Go</a></li><li><a href="lang-bash.html"><strong aria-hidden="true">4.6.</strong> Bash</a></li></ol></li><li><a href="cli.html"><strong aria-hidden="true">5.</strong> Using the wasmtime CLI</a></li><li><ol class="section"><li><a href="cli-install.html"><strong aria-hidden="true">5.1.</strong> Installation</a></li><li><a href="cli-options.html"><strong aria-hidden="true">5.2.</strong> CLI Options</a></li><li><a href="cli-cache.html"><strong aria-hidden="true">5.3.</strong> Cache Configuration</a></li></ol></li><li><a href="wasm.html"><strong aria-hidden="true">6.</strong> Writing WebAssembly</a></li><li><ol class="section"><li><a href="wasm-rust.html"><strong aria-hidden="true">6.1.</strong> Rust</a></li><li><a href="wasm-c.html"><strong aria-hidden="true">6.2.</strong> C/C++</a></li><li><a href="wasm-wat.html"><strong aria-hidden="true">6.3.</strong> WebAssembly Text Format (*.wat)</a></li><li><a href="wasm-markdown.html"><strong aria-hidden="true">6.4.</strong> Example: Markdown Parser</a></li></ol></li><li><a href="stability.html"><strong aria-hidden="true">7.</strong> Stability</a></li><li><ol class="section"><li><a href="stability-release.html"><strong aria-hidden="true">7.1.</strong> Release Process</a></li><li><a href="stability-platform-support.html"><strong aria-hidden="true">7.2.</strong> Platform Support</a></li></ol></li><li><a href="security.html"><strong aria-hidden="true">8.</strong> Security</a></li><li><ol class="section"><li><a href="security-disclosure.html"><strong aria-hidden="true">8.1.</strong> Disclosure Policy</a></li><li><a href="security-sandboxing.html"><strong aria-hidden="true">8.2.</strong> Sandboxing</a></li></ol></li><li><a href="contributing.html"><strong aria-hidden="true">9.</strong> Contributing</a></li><li><ol class="section"><li><a href="contributing-building.html"><strong aria-hidden="true">9.1.</strong> Building</a></li><li><a href="contributing-testing.html"><strong aria-hidden="true">9.2.</strong> Testing</a></li><li><a href="contributing-fuzzing.html"><strong aria-hidden="true">9.3.</strong> Fuzzing</a></li><li><a href="contributing-ci.html"><strong aria-hidden="true">9.4.</strong> CI</a></li><li><a href="contributing-coding-guidelines.html"><strong aria-hidden="true">9.5.</strong> Coding guidelines</a></li><li><a href="contributing-development-process.html"><strong aria-hidden="true">9.6.</strong> Development process</a></li><li><a href="contributing-release-process.html"><strong aria-hidden="true">9.7.</strong> Release Process</a></li><li><a href="contributing-governance.html"><strong aria-hidden="true">9.8.</strong> Governance</a></li><li><a href="contributing-coc.html"><strong aria-hidden="true">9.9.</strong> Code of Conduct</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Wasmtime</h1>
+
+                        <div class="right-buttons">
+                            <a href="print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#using-webassembly-from-rust" id="using-webassembly-from-rust">Using WebAssembly from Rust</a></h1>
+<p>This document shows an example of how to embed Wasmtime using the <a href="https://bytecodealliance.github.io/wasmtime/api/wasmtime/">Rust
+API</a> to execute a simple wasm program. Be sure to also check out the
+<a href="https://bytecodealliance.github.io/wasmtime/api/wasmtime/">full API documentation</a> for a full listing of what the <a href="https://crates.io/crates/wasmtime"><code>wasmtime</code>
+crate</a> has to offer and the <a href="./examples-rust-embed.html">book examples for
+Rust</a> for more information.</p>
+<h2><a class="header" href="#creating-the-webassembly-to-execute" id="creating-the-webassembly-to-execute">Creating the WebAssembly to execute</a></h2>
+<p>Creation of a WebAssembly file is generally covered by the <a href="./wasm.html">Writing
+WebAssembly chapter</a>, so we'll just assume that you've already got a
+wasm file on hand for the rest of this tutorial. To make things simple we'll
+also just assume you've got a <code>hello.wat</code> file which looks like this:</p>
+<pre><code class="language-wat">(module
+  (func (export &quot;answer&quot;) (result i32)
+     i32.const 42
+  )
+)
+</code></pre>
+<p>Here we're just exporting one function which returns an integer that we'll read
+from Rust.</p>
+<h2><a class="header" href="#hello-world" id="hello-world">Hello, World!</a></h2>
+<p>First up let's create a rust project</p>
+<pre><code class="language-sh">$ cargo new --bin wasmtime_hello
+$ cd wasmtime_hello
+</code></pre>
+<p>Next you'll want to add <code>hello.wat</code> to the root of your project.</p>
+<p>We will be using the <code>wasmtime</code> crate to run the wasm file, so next up we need a
+dependency in <code>Cargo.toml</code>:</p>
+<pre><code class="language-toml">[dependencies]
+wasmtime = &quot;0.12.0&quot;
+</code></pre>
+<p>Next up let's write the code that we need to execute this wasm file. The
+simplest version of this looks like so:</p>
+<pre><pre class="playpen"><code class="language-rust no_run"># extern crate wasmtime;
+use std::error::Error;
+use wasmtime::*;
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    // A `Store` is a sort of &quot;global object&quot; in a sense, but for now it suffices
+    // to say that it's generally passed to most constructors.
+    let store = Store::default();
+
+# if false {
+    // We start off by creating a `Module` which represents a compiled form
+    // of our input wasm module. In this case it'll be JIT-compiled after
+    // we parse the text format.
+    let module = Module::from_file(&amp;store, &quot;hello.wat&quot;)?;
+# }
+# let module = Module::new(&amp;store, r#&quot;(module (func (export &quot;answer&quot;) (result i32) i32.const 42))&quot;#)?;
+
+    // After we have a compiled `Module` we can then instantiate it, creating
+    // an `Instance` which we can actually poke at functions on.
+    let instance = Instance::new(&amp;module, &amp;[])?;
+
+    // The `Instance` gives us access to various exported functions and items,
+    // which we access here to pull out our `answer` exported function and
+    // run it.
+    let answer = instance.get_export(&quot;answer&quot;)
+        .expect(&quot;export named `answer` not found&quot;)
+        .func()
+        .expect(&quot;export `answer` was not a function&quot;);
+
+    // There's a few ways we can call the `answer` `Func` value. The easiest
+    // is to statically assert its signature with `get0` (in this case asserting
+    // it takes no arguments and returns one i32) and then call it.
+    let answer = answer.get0::&lt;i32&gt;()?;
+
+    // And finally we can call our function! Note that the error propagation
+    // with `?` is done to handle the case where the wasm function traps.
+    let result = answer()?;
+    println!(&quot;Answer: {:?}&quot;, result);
+    Ok(())
+}
+</code></pre></pre>
+<p>We can build and execute our example with <code>cargo run</code>. Note that by depending on
+<code>wasmtime</code> you're depending on a JIT compiler, so it may take a moment to build
+all of its dependencies:</p>
+<pre><code class="language-sh">$ cargo run
+  Compiling ...
+  ...
+   Finished dev [unoptimized + debuginfo] target(s) in 42.32s
+    Running `wasmtime_hello/target/debug/wasmtime_hello`
+Answer: 42
+</code></pre>
+<p>and there we go! We've now executed our first WebAssembly in <code>wasmtime</code> and
+gotten the result back.</p>
+<h2><a class="header" href="#importing-host-functionality" id="importing-host-functionality">Importing Host Functionality</a></h2>
+<p>What we've just seen is a pretty small example of how to call a wasm function
+and take a look at the result. Most interesting wasm modules, however, are going
+to import some functions to do something a bit more interesting. For that you'll
+need to provide imported functions from Rust for wasm to call!</p>
+<p>Let's take a look at a wasm module which imports a logging function as well as
+some simple arithmetic from the environment.</p>
+<pre><code class="language-wat">(module
+  (import &quot;&quot; &quot;log&quot; (func $log (param i32)))
+  (import &quot;&quot; &quot;double&quot; (func $double (param i32) (result i32)))
+  (func (export &quot;run&quot;) (result i32)
+    i32.const 0
+    call $log
+    i32.const 1
+    call $log
+    i32.const 2
+    call $double
+    call $log
+  )
+)
+</code></pre>
+<p>This wasm module will call our <code>&quot;log&quot;</code> import a few times and then also call the
+<code>&quot;double&quot;</code> import. We can compile and instantiate this module with code that
+looks like this:</p>
+<pre><pre class="playpen"><code class="language-rust no_run"># extern crate wasmtime;
+# use std::error::Error;
+# use wasmtime::*;
+# fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+# let store = Store::default();
+# let module = Module::new(&amp;store, r#&quot;
+# (module
+# (import &quot;&quot; &quot;log&quot; (func $log (param i32)))
+# (import &quot;&quot; &quot;double&quot; (func $double (param i32) (result i32))))&quot;#)?;
+// First we can create our `log` function, which will simply print out the
+// parameter it receives.
+let log = Func::wrap(&amp;store, |param: i32| {
+    println!(&quot;log: {}&quot;, param);
+});
+
+// Next we can create our double function which doubles the input it receives.
+let double = Func::wrap(&amp;store, |param: i32| param * 2);
+
+// When instantiating the module we now need to provide the imports to the
+// instantiation process. This is the second slice argument, where each
+// entry in the slice must line up with the imports in the module.
+let instance = Instance::new(&amp;module, &amp;[log.into(), double.into()])?;
+# Ok(())
+# }
+</code></pre></pre>
+<p>Note that there's a number of ways to define a <code>Func</code>, be sure to <a href="https://bytecodealliance.github.io/wasmtime/api/wasmtime/struct.Func.html">consult its
+documentation</a> for other ways to create a host-defined function.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="lang.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="lang-c.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="lang.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a href="lang-c.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

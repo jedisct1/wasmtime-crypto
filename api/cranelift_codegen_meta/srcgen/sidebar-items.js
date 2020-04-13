@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["_indent","Compute the indentation of s, or None of an empty line."],["parse_multiline","Given a multi-line string, split it into a sequence of lines after stripping a common indentation. This is useful for strings defined with doc strings."]],"static":[["SHIFTWIDTH",""]],"struct":[["Formatter",""],["Match","Match formatting class."]]});
